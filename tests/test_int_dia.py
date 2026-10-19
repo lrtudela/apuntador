@@ -146,8 +146,8 @@ with sync_playwright() as pw:
     g.on("pageerror", lambda e: errs.append(str(e)))
     g.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
     g.goto(URL)
-    nt = [g.evaluate(f"load('x','{m}',[]),[...ED.children].map(d=>d.dataset.type)") for m in ("cine", "teatro")]
-    check("documento nuevo empieza por escena (cine y teatro)", nt == [["heading"], ["heading"]], nt)
+    nt = [g.evaluate(f"load('x','{m}',[]),[...ED.children].map(d=>d.dataset.type).concat(TIPO.value)") for m in ("cine", "teatro")]
+    check("documento nuevo empieza por escena y el selector lo muestra (cine y teatro)", nt == [["heading", "heading"], ["heading", "heading"]], nt)
     g.evaluate("load('x','cine',[['character','MARÍA'],['dialogue','a'],['character','MARCOS'],['dialogue','b'],['character','']])")
     ghost = lambda: g.evaluate("ED.lastElementChild.dataset.ghost||''")
     g.click("#ed > div:last-child")

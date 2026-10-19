@@ -365,6 +365,7 @@ function load(t,m,L,c){
  ED.replaceChildren(...L.map(([ty,tx])=>mk(conv(ty,m),String(tx).replace(/\n/g,' '))));
  if(!ED.children.length)ED.append(mk('heading',''));
  TIPO.innerHTML=CYC[m].map(t=>`<option value="${t}">${LABEL[t]}</option>`).join('');
+ last=ED.firstChild;TIPO.value=last.dataset.type;
  renderPanels()}
 function restore(e){
  const[t,m,L,c]=JSON.parse(e.k);load(t,m,L,c);save();
