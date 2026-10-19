@@ -21,7 +21,8 @@ button,summary{cursor:pointer}
 button:hover,button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{border-color:var(--acc);outline:none}
 header{position:relative;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border-bottom:2px solid var(--ln);background:var(--paper)}
 #title{flex:1 1 140px;min-width:0;font-weight:700}
-#stat{color:var(--dim);font-size:.85rem}
+#stat,#saved{color:var(--dim);font-size:.85rem}
+#saved.err{color:var(--acc);font-weight:700}
 details{position:static}
 summary{list-style:none;display:flex;align-items:center}
 summary::-webkit-details-marker{display:none}
@@ -114,6 +115,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   </select></label>
  </div></details>
  <span id="stat"></span>
+ <span id="saved" aria-live="polite"></span>
 </header>
 <div id="main">
  <aside id="panel" data-t="esc">
@@ -323,7 +325,8 @@ function snap(){
  if(d){i=[...ED.children].indexOf(d);const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setEnd(s.anchorNode,s.anchorOffset);o=r.toString().length}
  hist=hist.slice(0,pos+1);hist.push({k,i,o});pos++;
  if(hist.length>300){hist.shift();pos--}}
-function save(){try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:lines().map(x=>[x.type,x.text]),c:getCover()}))}catch(_){}}
+function save(){const s=$('saved');try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:lines().map(x=>[x.type,x.text]),c:getCover()}));s.textContent='Guardado';s.className=''}
+ catch(_){s.textContent='No se pudo guardar: usa Archivo › Guardar .json';s.className='err'}}
 function commit(){clearTimeout(tm);norm();snap();save();renderPanels()}
 function changed(){clearTimeout(tm);tm=setTimeout(commit,400)}
 function load(t,m,L,c){

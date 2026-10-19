@@ -209,6 +209,16 @@ with sync_playwright() as pw:
     check("la portada añade una sola página", con == sin + 1, [sin, con])
     old = g.evaluate("setCover({author:'A',contact:'Luis Tudela\\nluis@correo.es\\n+34 600 000 000'});[getCover().email,getCover().phone]")
     check("el contacto antiguo se reparte en email y teléfono", old == ["luis@correo.es", "+34 600 000 000"], old)
+
+    # 10. aviso de guardado
+    s = b.new_context(viewport={"width": 1100, "height": 800}).new_page()
+    s.on("pageerror", lambda e: errs.append(str(e)))
+    s.goto(URL)
+    s.click("#ed > div:last-child"); s.keyboard.press("End"); s.keyboard.type("x"); s.wait_for_timeout(1500)
+    check("guardado correcto muestra Guardado", s.inner_text("#saved") == "Guardado", s.inner_text("#saved"))
+    s.evaluate("Storage.prototype.setItem=()=>{throw new Error('lleno')}; 0")
+    s.keyboard.type("y"); s.wait_for_timeout(1500)
+    check("guardado fallido avisa", "No se pudo guardar" in s.inner_text("#saved") and s.get_attribute("#saved", "class") == "err", s.inner_text("#saved"))
     b.close()
 
 print("ERRORES JS:", errs)
