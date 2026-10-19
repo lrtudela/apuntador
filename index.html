@@ -333,7 +333,7 @@ function changed(){clearTimeout(tm);tm=setTimeout(commit,400)}
 function load(t,m,L,c){
  M=m;TI.value=t;MO.value=m;ED.dataset.mode=m;setCover(c);
  ED.replaceChildren(...L.map(([ty,tx])=>mk(conv(ty,m),String(tx).replace(/\n/g,' '))));
- if(!ED.children.length)ED.append(mk(defType(),''));
+ if(!ED.children.length)ED.append(mk('heading',''));
  TIPO.innerHTML=CYC[m].map(t=>`<option value="${t}">${LABEL[t]}</option>`).join('');
  renderPanels()}
 function restore(e){
