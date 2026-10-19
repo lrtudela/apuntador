@@ -40,6 +40,7 @@ details>div button{text-align:left}
 #ed{max-width:62ch;margin:0 auto;padding:8px 0 50vh;outline:none;caret-color:var(--acc);white-space:pre-wrap;overflow-wrap:anywhere}
 #ed>div{margin-top:1em;min-height:1.4em}
 #ed>div.cur{background:color-mix(in srgb,var(--acc) 9%,transparent)}
+#ed>[data-ghost]::after{content:attr(data-ghost);color:var(--dim)}
 #ed>[data-type=heading]{font-weight:700;text-transform:uppercase;margin-top:1.8em}
 #ed>[data-type=character]{margin-left:38%;text-transform:uppercase}
 #ed>[data-type=paren]{margin-left:28%;margin-right:20%;margin-top:0}
@@ -64,6 +65,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  #ptitle{display:block;text-align:center;font-size:1.3rem;margin:0 0 3em}
  #ed{max-width:none;padding:0}
  #ed>div{break-inside:avoid;background:none!important}
+ #ed>[data-ghost]::after{content:none}
  #ed>[data-type=heading],#ed>[data-type=character],#ed>[data-type=act]{break-after:avoid}
 }
 </style>
@@ -100,6 +102,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <b>Enter</b>: nueva línea con el tipo siguiente.<br>
    <b>Mayús+Enter</b>: nueva línea del mismo tipo (versos).<br>
    <b>Ctrl+Espacio</b>: autocompleta personaje o lugar.<br>
+   Al escribir un personaje se propone en gris el más cercano: <b>Enter</b> lo acepta, <b>Esc</b> lo descarta.<br>
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
    Pulsa ✎ junto a un personaje o lugar para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan.</p>
   </section>
@@ -125,7 +128,7 @@ const NEXT={
  teatro:{stage:'character',act:'heading',heading:'stage',character:'dialogue',paren:'dialogue',dialogue:'character'}};
 const HEAD=/^(INT\.?\/EXT|I\/E|INT|EXT)\.?\s+/i;
 const DEMO=[['heading','INT. COCINA - NOCHE'],['action','Una luz tenue sobre la mesa. ANA espera con el móvil en la mano.'],['character','ANA'],['dialogue','Dijo que vendría antes de las doce.'],['character','LUIS'],['paren','sin mirarla'],['dialogue','Siempre dice lo mismo.']];
-let M='cine',last=null,tm,hist=[],pos=-1;
+let M='cine',last=null,tm,hist=[],pos=-1,esc=null;
 
 const h=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unparen=s=>s.replace(/^\(+|\)+$/g,'');
@@ -238,15 +241,26 @@ function goto(i){
 $('bpanel').onclick=()=>PAN.classList.toggle('open');
 
 /* ---------- autocompletar ---------- */
+// characters by closeness to d; whoever spoke just before goes last (it is usually the other's turn)
+function nearChars(d){
+ const all=[...ED.children],i=all.indexOf(d),before=all.slice(0,i).reverse();
+ const names=[...new Set([...before,...all.slice(i+1)].filter(x=>x.dataset.type==='character').map(x=>key(x.textContent)).filter(Boolean))];
+ const p=before.find(x=>x.dataset.type==='character');
+ if(p&&names.length&&key(p.textContent)===names[0])names.push(names.shift());
+ return names}
 function sugg(){
- SUG.innerHTML='';const d=cur();if(!d)return;
+ SUG.innerHTML='';ED.querySelectorAll('[data-ghost]').forEach(x=>delete x.dataset.ghost);
+ const d=cur();if(!d)return;
  const t=d.dataset.type;let q,list,fn;
  if(t!=='character'&&t!=='heading')return;
- const A=analyze(d);
- if(t==='character'){q=key(d.textContent);list=[...A.chars.keys()];fn=n=>n}
- else{const o=parseHead(d.textContent);q=o.loc.toUpperCase();list=[...A.locs.keys()];fn=n=>buildHead({...o,loc:n})}
- list.filter(n=>q&&n!==q&&n.startsWith(q)).slice(0,6).forEach(n=>{
-  const b=document.createElement('button');b.textContent=n;b.dataset.v=fn(n);SUG.append(b)})}
+ if(t==='character'){q=key(d.textContent);list=nearChars(d);fn=n=>n}
+ else{const o=parseHead(d.textContent);q=o.loc.toUpperCase();list=[...analyze(d).locs.keys()];fn=n=>buildHead({...o,loc:n})}
+ const L=list.filter(n=>q&&n!==q&&n.startsWith(q));
+ L.slice(0,6).forEach(n=>{
+  const b=document.createElement('button');b.textContent=n;b.dataset.v=fn(n);SUG.append(b)});
+ if(t!=='character'||!L.length||d===esc||d.textContent.toUpperCase()!==q)return;
+ const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setStart(s.anchorNode,s.anchorOffset);
+ if(s.isCollapsed&&!r.toString())d.dataset.ghost=L[0].slice(q.length)}
 function applySug(v){const d=cur();if(!d)return;set(d,v);caret(d,9e9);changed();sugg()}
 SUG.addEventListener('pointerdown',ev=>{if(ev.target.dataset.v){ev.preventDefault();applySug(ev.target.dataset.v)}});
 
@@ -281,8 +295,9 @@ ED.addEventListener('keydown',ev=>{
  const d=cur();if(!d)return;
  if(mod&&ev.code==='Space'){ev.preventDefault();const b=SUG.firstChild;if(b)applySug(b.dataset.v);return}
  if(ev.key==='Tab'){ev.preventDefault();cycle(d,ev.shiftKey?-1:1);return}
- if(ev.key==='Enter'){ev.preventDefault();enter(d,ev.shiftKey)}});
-ED.addEventListener('input',()=>{norm();changed()});
+ if(ev.key==='Escape'&&d.dataset.ghost){esc=d;delete d.dataset.ghost;return}
+ if(ev.key==='Enter'){ev.preventDefault();if(d.dataset.ghost&&!ev.shiftKey)applySug(SUG.firstChild.dataset.v);enter(d,ev.shiftKey)}});
+ED.addEventListener('input',()=>{esc=null;norm();changed();sugg()});
 ED.addEventListener('paste',ev=>{
  ev.preventDefault();const d=cur();if(!d)return;
  const p=ev.clipboardData.getData('text/plain').split(/\r?\n/);
