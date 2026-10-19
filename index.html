@@ -409,8 +409,11 @@ ED.addEventListener('paste',ev=>{
  ev.preventDefault();const d=cur();if(!d)return;
  const p=ev.clipboardData.getData('text/plain').split(/\r?\n/);
  document.execCommand('insertText',false,p[0]);
+ let tail='';
+ if(p.length>1){const r=getSelection().getRangeAt(0),t=document.createRange();t.selectNodeContents(d);t.setStart(r.endContainer,r.endOffset);
+  tail=t.toString();t.deleteContents();fix(d);p[p.length-1]+=tail}
  let at=d;p.slice(1).forEach(x=>{const nd=mk(d.dataset.type,x);at.after(nd);at=nd});
- if(at!==d)caret(at,9e9);changed()});
+ if(at!==d)caret(at,at.textContent.length-tail.length);changed()});
 ED.addEventListener('drop',ev=>ev.preventDefault());
 document.addEventListener('selectionchange',()=>{
  const d=cur();

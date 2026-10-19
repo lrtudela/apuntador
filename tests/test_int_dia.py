@@ -269,6 +269,17 @@ with sync_playwright() as pw:
     s.evaluate("Storage.prototype.setItem=()=>{throw new Error('lleno')}; 0")
     s.keyboard.type("y"); s.wait_for_timeout(1500)
     check("guardado fallido avisa", "No se pudo guardar" in s.inner_text("#saved") and s.get_attribute("#saved", "class") == "err", s.inner_text("#saved"))
+
+    # 11. pegar varias líneas en medio de una línea
+    v = b.new_context(viewport={"width": 1100, "height": 800}).new_page()
+    v.on("pageerror", lambda e: errs.append(str(e)))
+    v.goto(URL)
+    v.evaluate("ED.innerHTML='';ED.append(mk('action','HOLAMUNDO'));ED.focus();caret(ED.firstChild,4)")
+    v.evaluate("""const dt=new DataTransfer();dt.setData('text/plain','A\\nB\\nC');
+      ED.firstChild.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}))""")
+    check("pegar 3 líneas en medio: HOLAA, B, CMUNDO", texts(v) == ["HOLAA", "B", "CMUNDO"], texts(v))
+    v.keyboard.type("x")
+    check("el cursor queda tras lo pegado", texts(v)[-1] == "CxMUNDO", texts(v))
     b.close()
 
 print("ERRORES JS:", errs)
