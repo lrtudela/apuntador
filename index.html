@@ -44,7 +44,19 @@ details>div select{flex:1}
 #panel p{color:var(--dim);font-size:.9rem}
 @media(min-width:900px){#panel{position:static;transform:none;width:300px;flex:none}#bpanel{display:none}}
 #wrap{flex:1;overflow:auto;padding:16px}
-#ptitle{display:none}
+#ptitle,#pcover{display:none}
+#cover{width:min(34rem,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:12px;background:var(--paper);color:var(--fg);border:2px solid var(--acc)}
+#cover::backdrop{background:rgb(0 0 0/.6)}
+#cover h2{margin:0 0 8px;font-size:1.1rem;color:var(--acc)}
+#cover form{display:flex;flex-direction:column;gap:8px}
+#cover label{display:flex;flex-direction:column;gap:2px;color:var(--dim)}
+#cover input,#cover textarea{background:var(--bg);color:var(--fg)}
+#cover textarea{font:inherit;border:2px solid var(--ln);padding:.3rem .6rem;resize:vertical}
+#cover textarea:focus-visible{border-color:var(--acc);outline:none}
+#cover .chk{flex-direction:row;align-items:center;color:var(--fg)}
+#cover .chk input{min-height:0;width:22px;height:22px;accent-color:var(--acc)}
+#cover .act{display:flex;gap:6px}
+#cover .act button{flex:1}
 #ed{max-width:62ch;margin:0 auto;padding:8px 0 50vh;outline:none;caret-color:var(--acc);white-space:pre-wrap;overflow-wrap:anywhere}
 #ed>div{margin-top:1em;min-height:1.4em}
 #ed>div.cur{background:color-mix(in srgb,var(--acc) 9%,transparent)}
@@ -71,6 +83,13 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  #main{display:block}
  #wrap{overflow:visible;padding:0}
  #ptitle{display:block;text-align:center;font-size:1.3rem;margin:0 0 3em}
+ #ptitle:empty{display:none}
+ #pcover:not(:empty){display:flex;flex-direction:column;height:23cm;break-after:page;text-align:center;white-space:pre-line}
+ #pcover .t{margin:7cm 0 2em;font-size:1.3rem;font-weight:700;text-transform:uppercase}
+ #pcover .s{margin-top:2em}
+ #pcover .b{margin-top:auto;display:flex;justify-content:space-between;gap:2em;text-align:left}
+ #pcover .b>div+div{text-align:right}
+ #pcover .f{margin-top:2em;font-size:.9rem}
  #ed{max-width:none;padding:0}
  #ed>div{break-inside:avoid;background:none!important}
  #ed>[data-ghost]::after{content:none}
@@ -88,6 +107,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   <button data-act="open">Abrir (.json / .fountain)</button>
   <button data-act="json">Guardar .json</button>
   <button data-act="fountain">Exportar .fountain</button>
+  <button data-act="cover">Portada</button>
   <button data-act="print">Imprimir / PDF</button>
   <label>Tema <select id="theme">
    <option value="">Verde terminal</option><option value="papel">Papel</option><option value="ambar">Ámbar</option><option value="sepia">Sepia nocturna</option><option value="azul">Azul noche</option><option value="salvia">Verde salvia</option><option value="vapor">Vaporwave</option>
@@ -119,6 +139,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   </section>
  </aside>
  <div id="wrap">
+  <div id="pcover"></div>
   <h1 id="ptitle"></h1>
   <div id="ed" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Guion"></div>
  </div>
@@ -128,6 +149,20 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  <button id="cyc" aria-label="Siguiente tipo">⇥</button>
  <div id="sug"></div>
 </footer>
+<dialog id="cover" aria-labelledby="cvh"><form method="dialog">
+ <h2 id="cvh">Portada</h2>
+ <label>Título <input name="title"></label>
+ <label>Crédito <input name="credit" placeholder="escrito por"></label>
+ <label>Autor <input name="author"></label>
+ <label>Basado en <input name="source"></label>
+ <label>Versión <input name="version"></label>
+ <label>Fecha <input name="date"></label>
+ <label>Contacto <textarea name="contact" rows="3"></textarea></label>
+ <label>Registro / derechos <input name="copyright"></label>
+ <label>Notas <textarea name="notes" rows="2"></textarea></label>
+ <label class="chk"><input type="checkbox" name="on"> Imprimir portada</label>
+ <div class="act"><button value="ok">Guardar</button><button value="">Cancelar</button></div>
+</form></dialog>
 <input type="file" id="fileIn" hidden accept=".json,.fountain,.txt">
 <script>
 const $=id=>document.getElementById(id);
@@ -281,26 +316,40 @@ SUG.addEventListener('pointerdown',ev=>{if(ev.target.dataset.v){ev.preventDefaul
 
 /* ---------- historial y guardado ---------- */
 function snap(){
- const k=JSON.stringify([TI.value,M,lines().map(x=>[x.type,x.text])]);
+ const k=JSON.stringify([TI.value,M,lines().map(x=>[x.type,x.text]),getCover()]);
  if(hist[pos]&&hist[pos].k===k)return;
  const d=cur();let i=-1,o=0;
  if(d){i=[...ED.children].indexOf(d);const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setEnd(s.anchorNode,s.anchorOffset);o=r.toString().length}
  hist=hist.slice(0,pos+1);hist.push({k,i,o});pos++;
  if(hist.length>300){hist.shift();pos--}}
-function save(){try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:lines().map(x=>[x.type,x.text])}))}catch(_){}}
+function save(){try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:lines().map(x=>[x.type,x.text]),c:getCover()}))}catch(_){}}
 function commit(){clearTimeout(tm);norm();snap();save();renderPanels()}
 function changed(){clearTimeout(tm);tm=setTimeout(commit,400)}
-function load(t,m,L){
- M=m;TI.value=t;MO.value=m;ED.dataset.mode=m;
+function load(t,m,L,c){
+ M=m;TI.value=t;MO.value=m;ED.dataset.mode=m;setCover(c);
  ED.replaceChildren(...L.map(([ty,tx])=>mk(conv(ty,m),String(tx).replace(/\n/g,' '))));
  if(!ED.children.length)ED.append(mk(defType(),''));
  TIPO.innerHTML=CYC[m].map(t=>`<option value="${t}">${LABEL[t]}</option>`).join('');
  renderPanels()}
 function restore(e){
- const[t,m,L]=JSON.parse(e.k);load(t,m,L);save();
+ const[t,m,L,c]=JSON.parse(e.k);load(t,m,L,c);save();
  ED.focus();const d=ED.children[e.i];if(d)caret(d,e.o)}
 function undo(){commit();if(pos>0)restore(hist[--pos])}
 function redo(){if(pos<hist.length-1)restore(hist[++pos])}
+
+/* ---------- portada (los datos viven en el formulario) ---------- */
+const CV=$('cover'),CF=CV.querySelector('form');let cvPrev;
+function getCover(){const o=Object.fromEntries(new FormData(CF));o.on=!!o.on;return o}
+function setCover(c){c=c||{};[...CF.elements].forEach(e=>{if(e.name)e.type==='checkbox'?e.checked=!!c[e.name]:e.value=c[e.name]||''})}
+function openCover(){
+ cvPrev=getCover();if(!Object.values(cvPrev).some(Boolean))CF.elements.on.checked=true;
+ CF.elements.title.placeholder=TI.value;CV.returnValue='';CV.showModal()}
+CV.addEventListener('close',()=>{if(CV.returnValue==='ok')commit();else setCover(cvPrev)});
+function coverHTML(c){
+ const line=(s,k)=>s?`<div${k?` class="${k}"`:''}>${h(s)}</div>`:'';
+ return line(c.title||TI.value,'t')+(c.author?line(c.credit||'escrito por')+line(c.author):'')+line(c.source,'s')
+  +`<div class="b"><div>${h(c.contact)}</div><div>${h([c.version,c.date].filter(Boolean).join('\n'))}</div></div>`
+  +line([c.copyright,c.notes].filter(Boolean).join('\n'),'f')}
 
 /* ---------- eventos del editor ---------- */
 ED.addEventListener('keydown',ev=>{
@@ -335,7 +384,8 @@ MO.onchange=()=>{
 
 /* ---------- Fountain ---------- */
 function toFountain(){
- let o=`Title: ${TI.value}\nMode: ${M}\n`,prev=null;
+ const c=getCover(),F=[['Title',c.title||TI.value],['Credit',c.credit],['Author',c.author],['Source',c.source],['Revision',c.version],['Draft date',c.date],['Contact',c.contact],['Copyright',c.copyright],['Notes',c.notes]];
+ let o=F.filter(x=>x[1].trim()).map(([k,v])=>{const L=v.split('\n').filter(s=>s.trim());return L.length>1?k+':\n'+L.map(s=>'    '+s.trim()).join('\n')+'\n':k+': '+L[0].trim()+'\n'}).join('')+`Mode: ${M}\n`,prev=null;
  lines().forEach(l=>{
   const t=l.text.trim();if(!t)return;let s;
   switch(l.type){
@@ -352,8 +402,9 @@ function toFountain(){
 function parseFountain(src){
  src=src.replace(/\r/g,'').replace(/\/\*[\s\S]*?\*\//g,'').replace(/\[\[[\s\S]*?\]\]/g,'');
  const R=src.split('\n'),meta={},out=[];let i=0;
- const KEY=/^(Title|Credit|Author|Authors|Source|Draft date|Date|Contact|Copyright|Notes|Mode)\s*:\s*(.*)/i;
- if(KEY.test(R[0]||'')){for(;i<R.length&&R[i].trim();i++){const m=R[i].match(KEY);if(m)meta[m[1].toLowerCase()]=m[2]}}
+ const KEY=/^(Title|Credit|Author|Authors|Source|Revision|Draft date|Date|Contact|Copyright|Notes|Mode)\s*:\s*(.*)/i;
+ if(KEY.test(R[0]||'')){let k;for(;i<R.length&&R[i].trim();i++){const m=R[i].match(KEY);
+  if(m){k=m[1].toLowerCase();meta[k]=m[2].trim()}else if(k&&/^(\t| {3})/.test(R[i]))meta[k]+=(meta[k]?'\n':'')+R[i].trim()}}
  const teatro=(meta.mode||'').toLowerCase()==='teatro';
  let blank=true,dlg=false;
  for(;i<R.length;i++){
@@ -369,7 +420,9 @@ function parseFountain(src){
   else if(blank&&!nextBlank&&(t[0]==='@'||(t===t.toUpperCase()&&/\p{L}/u.test(t)&&t[0]!=='!'))){out.push(['character',t.replace(/^@/,'').replace(/\s*\^$/,'')]);dlg=true}
   else out.push([teatro?'stage':'action',t.replace(/^!/,'')]);
   blank=false}
- return{t:meta.title||'Sin título',m:teatro?'teatro':'cine',l:out}}
+ const c={credit:meta.credit,author:meta.author||meta.authors,source:meta.source,version:meta.revision,date:meta['draft date']||meta.date,contact:meta.contact,copyright:meta.copyright,notes:meta.notes};
+ c.on=Object.values(c).some(Boolean);
+ return{t:(meta.title||'Sin título').replace(/\n/g,' '),m:teatro?'teatro':'cine',l:out,c}}
 
 /* ---------- menú Archivo ---------- */
 function dl(name,text,type){
@@ -386,22 +439,23 @@ $('menu').addEventListener('click',ev=>{
  $('menu').open=false;
  if(a==='new'){if(confirm('¿Empezar un guion nuevo? Puedes recuperar el actual con Ctrl+Z.')){commit();load('Sin título',M,[]);commit()}}
  if(a==='open')$('fileIn').click();
- if(a==='json')dl(slug()+'.apuntador.json',JSON.stringify({v:1,t:TI.value,m:M,l:lines().map(x=>[x.type,x.text])}),'application/json');
+ if(a==='json')dl(slug()+'.apuntador.json',JSON.stringify({v:1,t:TI.value,m:M,l:lines().map(x=>[x.type,x.text]),c:getCover()}),'application/json');
  if(a==='fountain')dl(slug()+'.fountain',toFountain(),'text/plain');
+ if(a==='cover')openCover();
  if(a==='print')print()});
 $('fileIn').addEventListener('change',async ev=>{
  const f=ev.target.files[0];ev.target.value='';if(!f)return;
  const txt=await f.text();let d;
  try{d=/\.json$/i.test(f.name)?JSON.parse(txt):parseFountain(txt)}catch(_){alert('No se pudo leer el archivo.');return}
- commit();load(d.t||'Sin título',d.m==='teatro'?'teatro':'cine',d.l||[]);commit()});
-addEventListener('beforeprint',()=>{$('ptitle').textContent=TI.value});
+ commit();load(d.t||'Sin título',d.m==='teatro'?'teatro':'cine',d.l||[],d.c);commit()});
+addEventListener('beforeprint',()=>{const c=getCover();$('ptitle').textContent=c.on?'':TI.value;$('pcover').innerHTML=c.on?coverHTML(c):''});
 
 /* ---------- arranque ---------- */
 try{setTheme(localStorage.getItem('guion:theme')||'')}catch(_){}
 (function(){
  let d={t:'Sin título',m:'cine',l:DEMO};
  try{const s=JSON.parse(localStorage.getItem('guion:v1'));if(s&&Array.isArray(s.l))d=s}catch(_){}
- load(d.t,d.m==='teatro'?'teatro':'cine',d.l);snap()})();
+ load(d.t,d.m==='teatro'?'teatro':'cine',d.l,d.c);snap()})();
 </script>
 </body>
 </html>
