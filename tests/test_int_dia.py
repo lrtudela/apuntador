@@ -336,6 +336,30 @@ with sync_playwright() as pw:
     w.evaluate("PL=[{id:'1',n:'Cocina'}];ED.firstChild.dataset.place='1';commit()")
     w.evaluate("const d=JSON.parse(JSON.stringify({v:1,t:TI.value,m:M,l:rows(),c:getCover(),p:PL}));load('y','cine',[]);load(d.t,d.m,d.l,d.c,d.p)")
     check("JSON ida y vuelta conserva lista y etiqueta", w.evaluate("[PL[0].n,lines()[0].place]") == ["Cocina", "1"])
+
+    # 13. dos pestañas
+    tc = b.new_context(viewport={"width": 1100, "height": 800})
+    t1, t2 = tc.new_page(), tc.new_page()
+    for t in (t1, t2):
+        t.on("pageerror", lambda e: errs.append(str(e)))
+        t.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
+        t.goto(URL)
+    last = lambda t: texts(t)[-1]
+    def typ(t, s): t.click("#ed > div:last-child"); t.keyboard.press("End"); t.keyboard.type(s)
+    saved = lambda: t1.evaluate("JSON.parse(localStorage.getItem('guion:v1')).l.at(-1)[1]")
+    base = last(t1)
+    typ(t1, "A"); t1.wait_for_timeout(1000)
+    check("la otra pestaña sin cambios carga lo guardado", last(t2) == base + "A" and "otra pestaña" in t2.inner_text("#saved"), [last(t2), t2.inner_text("#saved")])
+    t2.click("#ed > div:last-child"); t2.keyboard.press("Control+z")
+    check("deshacer en la otra pestaña vuelve a su versión", last(t2) == base, last(t2))
+    t2.keyboard.press("Control+y"); t2.wait_for_timeout(600)
+    typ(t2, "B"); typ(t1, "C"); t1.evaluate("commit()"); t2.wait_for_timeout(1000)
+    check("con cambios en las dos, avisa y no pisa", t2.is_visible("#clash") and saved() == base + "AC", [t2.is_visible("#clash"), saved()])
+    t2.click("#clash button[data-k=keep]"); t1.wait_for_timeout(300)
+    check("quedarme con esta guarda y la otra la carga", saved() == base + "AB" and last(t1) == base + "AB" and not t2.is_visible("#clash"), [saved(), last(t1)])
+    typ(t1, "D"); typ(t2, "E"); t2.evaluate("commit()"); t1.wait_for_timeout(1000)
+    t1.click("#clash button[data-k=load]")
+    check("cargar la suya trae la versión de la otra", last(t1) == base + "ABE" and saved() == base + "ABE", [last(t1), saved()])
     b.close()
 
 print("ERRORES JS:", errs)

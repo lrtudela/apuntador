@@ -23,6 +23,7 @@ header{position:relative;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
 #title{flex:1 1 140px;min-width:0;font-weight:700}
 #stat,#saved{color:var(--dim);font-size:.85rem}
 #saved.err{color:var(--acc);font-weight:700}
+#clash{color:var(--acc);font-weight:700;font-size:.85rem}
 details{position:static}
 summary{list-style:none;display:flex;align-items:center}
 summary::-webkit-details-marker{display:none}
@@ -127,6 +128,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  </div></details>
  <span id="stat"></span>
  <span id="saved" aria-live="polite"></span>
+ <span id="clash" role="alert" hidden>Otra pestaña ha cambiado el guion. <button data-k="load">Cargar la suya</button> <button data-k="keep">Quedarme con esta</button></span>
 </header>
 <div id="main">
  <aside id="panel" data-t="esc">
@@ -198,7 +200,7 @@ const NEXT={
 const ALT={cine:{character:'paren',dialogue:'action'},teatro:{character:'paren',dialogue:'stage'}};
 const HEAD=/^(INT\.?\/EXT|I\/E|INT|EXT)\.?\s+/i;
 const DEMO=[['heading','INT. COCINA - NOCHE'],['action','Una luz tenue sobre la mesa. ANA espera con el móvil en la mano.'],['character','ANA'],['dialogue','Dijo que vendría antes de las doce.'],['character','LUIS'],['paren','sin mirarla'],['dialogue','Siempre dice lo mismo.']];
-let M='cine',last=null,tm,hist=[],pos=-1,esc=null,fresh=null,PL=[],jp={};// PL: the author's places [{id,n}]; headings point to an id in data-place
+let M='cine',last=null,tm=0,other=null,hist=[],pos=-1,esc=null,fresh=null,PL=[],jp={};// PL: the author's places [{id,n}]; headings point to an id in data-place
 
 const h=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unparen=s=>s.replace(/^\(+|\)+$/g,'');
@@ -392,9 +394,9 @@ function snap(){
  if(d){i=[...ED.children].indexOf(d);const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setEnd(s.anchorNode,s.anchorOffset);o=r.toString().length}
  hist=hist.slice(0,pos+1);hist.push({k,i,o});pos++;
  if(hist.length>300){hist.shift();pos--}}
-function save(){const s=$('saved');try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:rows(),c:getCover(),p:PL}));s.textContent='Guardado';s.className=''}
+function save(){const s=$('saved');if(other)return;try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:rows(),c:getCover(),p:PL}));s.textContent='Guardado';s.className=''}
  catch(_){s.textContent='No se pudo guardar: usa Archivo › Guardar .json';s.className='err'}}
-function commit(){clearTimeout(tm);norm();snap();save();renderPanels()}
+function commit(){clearTimeout(tm);tm=0;norm();snap();save();renderPanels()}
 function changed(){clearTimeout(tm);tm=setTimeout(commit,400)}
 function load(t,m,L,c,p){
  M=m;TI.value=t;MO.value=m;ED.dataset.mode=m;setCover(c);
@@ -534,6 +536,22 @@ $('fileIn').addEventListener('change',async ev=>{
  const txt=await f.text();let d;
  try{d=/\.json$/i.test(f.name)?JSON.parse(txt):parseFountain(txt)}catch(_){alert('No se pudo leer el archivo.');return}
  commit();load(d.t||'Sin título',d.m==='teatro'?'teatro':'cine',d.l||[],d.c,d.p);commit()});
+/* ---------- otras pestañas ---------- */
+// another tab saved: take its script if this one has no edits waiting; otherwise ask (other holds its version)
+function fromOther(v){
+ clearTimeout(tm);tm=0;norm();snap();// this tab's version stays in undo
+ const s=JSON.parse(v),d=cur(),i=d?[...ED.children].indexOf(d):-1;
+ load(s.t||'Sin título',s.m==='teatro'?'teatro':'cine',s.l,s.c,s.p);snap();
+ const n=ED.children[Math.min(i,ED.children.length-1)];if(i>=0&&n)caret(n,0);
+ $('saved').textContent='Actualizado desde otra pestaña';$('saved').className=''}
+addEventListener('storage',ev=>{
+ if(ev.key!=='guion:v1'||!ev.newValue)return;
+ try{if(!Array.isArray(JSON.parse(ev.newValue).l))return}catch(_){return}
+ if(tm||other){other=ev.newValue;$('clash').hidden=false;$('saved').textContent=''}else fromOther(ev.newValue)});
+$('clash').addEventListener('click',ev=>{
+ const k=ev.target.dataset.k;if(!k)return;
+ const v=other;other=null;$('clash').hidden=true;
+ if(k==='load')fromOther(v);else commit()});
 addEventListener('beforeprint',()=>{const c=getCover();$('ptitle').textContent=c.on?'':TI.value;$('pcover').innerHTML=c.on?coverHTML(c):''});
 
 /* ---------- arranque ---------- */
