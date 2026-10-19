@@ -120,6 +120,9 @@ with sync_playwright() as pw:
       const a=N(lines().filter(l=>l.text.trim()).map(l=>[l.type,l.type==='paren'?unparen(l.text):l.text]));
       const f=toFountain();const d=parseFountain(f);return d.m==='teatro'&&(JSON.stringify(a)===JSON.stringify(N(d.l))||JSON.stringify([a,d.l,f]))}""")
     check("Fountain ida y vuelta (teatro, con actos)", ok is True, ok)
+    p.wait_for_timeout(500)
+    lug = p.evaluate("[analyze().locs.size, document.querySelector('#panel nav [data-t=lug]').hidden]")
+    check("teatro: sin lugares y pestaña Lugares oculta", lug == [0, True], lug)
 
     # 6. móvil
     m = ctx.new_page(); m.set_viewport_size({"width": 360, "height": 700})

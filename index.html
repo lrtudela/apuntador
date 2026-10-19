@@ -248,14 +248,15 @@ function analyze(skip){
   else if(l.type!=='paren')c=null;
   if(l.type==='heading'){
    const k=parseHead(l.text).loc.toUpperCase();
-   if(k){const o=locs.get(k)||{n:0,first:i};o.n++;locs.set(k,o)}
+   if(k&&M==='cine'){const o=locs.get(k)||{n:0,first:i};o.n++;locs.set(k,o)}
    scenes.push({i,label:++n+'. '+l.text})}
   if(l.type==='act')scenes.push({i,label:l.text,act:1})});
  return{chars,locs,scenes}}
 function renderPanels(){
  const a=document.activeElement;
  if(PAN.contains(a)&&a.tagName==='INPUT')return;
- const A=analyze();
+ const A=analyze(),lug=PAN.querySelector('nav [data-t=lug]');
+ lug.hidden=M==='teatro';if(lug.hidden&&PAN.dataset.t==='lug')PAN.querySelector('nav [data-t=esc]').click();
  $('lEsc').innerHTML=A.scenes.map(s=>`<li data-i="${s.i}"${s.act?' class="act"':''}><span>${h(s.label)}</span></li>`).join('')||'<p>Sin escenas todavía.</p>';
  const row=([k,v])=>`<li data-i="${v.first}" data-k="${h(k)}"><span>${h(k)}</span><b>${v.n||''}</b><button data-r aria-label="Renombrar ${h(k)}">✎</button></li>`;
  $('lPer').innerHTML=[...A.chars].sort((a,b)=>b[1].n-a[1].n).map(row).join('')||'<p>Sin personajes todavía.</p>';
