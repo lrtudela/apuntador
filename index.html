@@ -82,7 +82,8 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
 #sug button{white-space:nowrap;color:var(--acc)}
 @media(max-width:480px){#ed>[data-type=character]{margin-left:30%}#ed>[data-type=dialogue]{margin-left:8%;margin-right:8%}#ed>[data-type=paren]{margin-left:20%}#ed[data-mode=teatro]>[data-type=character],#ed[data-mode=teatro]>[data-type=dialogue],#ed[data-mode=teatro]>[data-type=paren]{margin-left:12%}}
 @media print{
- @page{size:A4;margin:2.5cm}
+ @page{size:A4;margin:2.5cm;@top-right{content:counter(page);font:12pt "Courier New",Courier,monospace}}
+ @page cover{counter-increment:page 0;@top-right{content:none}}
  html,body{height:auto}
  body{display:block;background:#fff;color:#000}
  header,footer,#panel{display:none!important}
@@ -90,7 +91,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  #wrap{overflow:visible;padding:0}
  #ptitle{display:block;text-align:center;font-size:1.3rem;margin:0 0 3em}
  #ptitle:empty{display:none}
- #pcover:not(:empty){display:flex;flex-direction:column;height:23cm;break-after:page;text-align:center;white-space:pre-line}
+ #pcover:not(:empty){page:cover;display:flex;flex-direction:column;height:23cm;break-after:page;text-align:center;white-space:pre-line}
  #pcover .t{margin:7cm 0 2em;font-size:1.3rem;font-weight:700;text-transform:uppercase}
  #pcover .s{margin-top:2em}
  #pcover .b{margin-top:auto;display:flex;justify-content:space-between;gap:2em;text-align:left}
