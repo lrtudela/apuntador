@@ -400,7 +400,8 @@ ED.addEventListener('keydown',ev=>{
  if(mod&&ev.code==='Space'){ev.preventDefault();const b=SUG.firstChild;if(b)applySug(b.dataset.v);return}
  if(ev.key==='Tab'){ev.preventDefault();cycle(d,ev.shiftKey?-1:1);return}
  if(ev.key==='Escape'&&d.dataset.ghost){esc=d;delete d.dataset.ghost;return}
- if(ev.key==='Enter'){ev.preventDefault();if(d.dataset.ghost&&!ev.shiftKey)applySug(SUG.firstChild.dataset.v);enter(d,ev.shiftKey)}});
+ if(ev.key==='ArrowRight'&&d.dataset.ghost&&!ev.shiftKey&&!mod){ev.preventDefault();applySug(SUG.firstChild.dataset.v);return}
+ if(ev.key==='Enter'){ev.preventDefault();enter(d,ev.shiftKey)}});
 // a script wiped to one empty line starts again with a scene heading
 let nb=0;ED.addEventListener('beforeinput',()=>nb=ED.children.length);
 ED.addEventListener('input',()=>{esc=null;norm();if(nb>1&&ED.children.length===1&&!ED.textContent)setType(ED.firstChild,'heading');changed();sugg()});

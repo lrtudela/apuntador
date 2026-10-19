@@ -162,8 +162,10 @@ with sync_playwright() as pw:
     g.click("#ed > div:last-child")
     g.keyboard.type("mar")
     check("propone en gris el más cercano que no acaba de hablar", ghost() == "ÍA", ghost())
+    g.keyboard.press("ArrowRight")
+    check("flecha derecha acepta la propuesta", texts(g)[-1] == "MARÍA" and ghost() == "", texts(g))
     g.keyboard.press("Enter")
-    check("Enter acepta la propuesta y salta a diálogo", texts(g)[-2] == "MARÍA" and types(g)[-1] == "dialogue", texts(g))
+    check("Enter tras aceptar salta a diálogo", texts(g)[-2] == "MARÍA" and types(g)[-1] == "dialogue", texts(g))
     check("la propuesta no entra en el texto", "ÍA" not in g.evaluate("JSON.stringify(lines())").replace("MARÍA", ""))
     g.keyboard.press("Enter")  # diálogo -> personaje
     g.keyboard.type("m")
@@ -174,6 +176,11 @@ with sync_playwright() as pw:
     check("sin coincidencia no se propone nada", ghost() == "")
     g.keyboard.press("Enter")
     check("nombre nuevo se queda tal cual", texts(g)[-2] == "marx" and "MARX" in g.evaluate("[...analyze().chars.keys()]"), texts(g))
+    g.evaluate("load('x','cine',[['character','LUISA'],['dialogue','a'],['character','']])")
+    g.click("#ed > div:last-child"); g.keyboard.type("Luis")
+    check("propone LUISA al escribir Luis", ghost() == "A", ghost())
+    g.keyboard.press("Enter")
+    check("Enter con propuesta deja lo escrito y crea la línea siguiente", texts(g)[-2] == "Luis" and types(g)[-1] == "dialogue", texts(g))
 
     # 7b. renombrar con menciones en el texto
     g.evaluate("""load('x','cine',[['character','LUZ'],['dialogue','Luz, ven.'],['action','LUZ entra. Luz apaga la luz. LUZMARÍA mira.'],
