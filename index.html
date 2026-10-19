@@ -43,6 +43,11 @@ details>div select{flex:1}
 #panel li b{color:var(--dim);font-weight:400}
 #panel li input{flex:1;min-width:0}
 #panel p{color:var(--dim);font-size:.9rem}
+#panel li.none{color:var(--dim)}
+#lSel label{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+#lSel select{width:100%}
+#panel .add{display:flex;gap:6px;margin-top:8px}
+#panel .add input{flex:1;min-width:0}
 @media(min-width:900px){#panel{position:static;transform:none;width:300px;flex:none}#bpanel{display:none}}
 #wrap{flex:1;overflow:auto;padding:16px}
 #ptitle,#pcover{display:none}
@@ -133,17 +138,19 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   </nav>
   <section data-s="esc"><ul id="lEsc"></ul></section>
   <section data-s="per" hidden><ul id="lPer"></ul></section>
-  <section data-s="lug" hidden><ul id="lLug"></ul></section>
+  <section data-s="lug" hidden><div id="lSel"></div><ul id="lLug"></ul>
+   <div class="add"><input id="lugNew" placeholder="Nuevo lugar" aria-label="Nuevo lugar"><button data-add>Añadir</button></div></section>
   <section data-s="ayu" hidden>
    <p><b>INT. DÍA</b> · editor de guion para cine y teatro<br><br>
    <b>Tab</b> / <b>Mayús+Tab</b>: cambia el tipo de línea.<br>
    <b>Enter</b>: nueva línea con el tipo siguiente (tras personaje, diálogo; tras diálogo, personaje).<br>
    <b>Tab</b> en esa línea nueva: segunda opción (paréntesis tras personaje; acción o acotación tras diálogo).<br>
    <b>Mayús+Enter</b>: nueva línea del mismo tipo (versos).<br>
-   <b>Ctrl+Espacio</b>: autocompleta personaje o lugar.<br>
+   <b>Ctrl+Espacio</b>: autocompleta personaje.<br>
    Al escribir un personaje se propone en gris el más cercano: <b>Enter</b> lo acepta, <b>Esc</b> lo descarta.<br>
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
-   Pulsa ✎ junto a un personaje o lugar para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.</p>
+   Pulsa ✎ junto a un personaje para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.<br><br>
+   <b>Lugares</b>: dalos de alta en su pestaña. Con el cursor en una cabecera, elige allí su lugar; el texto de la cabecera no cambia. Pulsa un lugar para ir a sus escenas, una tras otra. ✎ cambia su nombre y ✕ lo borra (sus escenas se quedan sin lugar).</p>
   </section>
  </aside>
  <div id="wrap">
@@ -191,7 +198,7 @@ const NEXT={
 const ALT={cine:{character:'paren',dialogue:'action'},teatro:{character:'paren',dialogue:'stage'}};
 const HEAD=/^(INT\.?\/EXT|I\/E|INT|EXT)\.?\s+/i;
 const DEMO=[['heading','INT. COCINA - NOCHE'],['action','Una luz tenue sobre la mesa. ANA espera con el móvil en la mano.'],['character','ANA'],['dialogue','Dijo que vendría antes de las doce.'],['character','LUIS'],['paren','sin mirarla'],['dialogue','Siempre dice lo mismo.']];
-let M='cine',last=null,tm,hist=[],pos=-1,esc=null,fresh=null;
+let M='cine',last=null,tm,hist=[],pos=-1,esc=null,fresh=null,PL=[],jp={};// PL: the author's places [{id,n}]; headings point to an id in data-place
 
 const h=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unparen=s=>s.replace(/^\(+|\)+$/g,'');
@@ -200,20 +207,14 @@ const defType=()=>M==='cine'?'action':'stage';
 function conv(t,m){
  if(m==='cine')return ({stage:'action',act:'action'})[t]||t;
  return ({action:'stage',transition:'stage'})[t]||t}
-function parseHead(t){
- let pre='',r=t.trim();const m=r.match(HEAD);
- if(m){pre=m[1].toUpperCase()+'. ';r=r.slice(m[0].length)}
- const k=r.lastIndexOf(' - ');let loc=r,time='';
- if(k>=0){loc=r.slice(0,k);time=r.slice(k+3)}
- return{pre,loc:loc.trim(),time:time.trim()}}
-const buildHead=o=>o.pre+o.loc+(o.time?' - '+o.time:'');
 
 /* ---------- DOM de líneas ---------- */
 function fix(d){if(!d.textContent&&!d.querySelector('br'))d.innerHTML='<br>'}
 function set(d,t){d.textContent=t;fix(d)}
-function mk(type,text){
+function mk(type,text,place){
  if(!LABEL[type])type='action';
  const d=document.createElement('div');d.dataset.type=type;
+ if(type==='heading'&&place&&PL.some(p=>p.id===place))d.dataset.place=place;
  if(type==='paren')text='('+unparen(text)+')';
  set(d,text);return d}
 function caret(d,o){
@@ -225,7 +226,9 @@ function cur(){
  if(!n||n===ED||!ED.contains(n))return null;
  while(n&&n.parentNode!==ED)n=n.parentNode;
  return n&&n.nodeName==='DIV'?n:null}
-const lines=skip=>[...ED.children].filter(d=>d!==skip).map(d=>({type:d.dataset.type,text:d.textContent.replace(/ /g,' ')}));
+const lines=skip=>[...ED.children].filter(d=>d!==skip).map(d=>{const o={type:d.dataset.type,text:d.textContent.replace(/ /g,' ')};if(o.type==='heading'&&d.dataset.place)o.place=d.dataset.place;return o});
+// stored form of a line: [type,text], plus the place id on tagged headings
+const rows=()=>lines().map(x=>x.place?[x.type,x.text,x.place]:[x.type,x.text]);
 function norm(){
  if(!ED.firstChild||[...ED.childNodes].some(n=>n.nodeName!=='DIV')){
   const t=ED.textContent;ED.replaceChildren(mk(t?defType():'heading',t));caret(ED.firstChild,9e9)}
@@ -253,26 +256,26 @@ function enter(d,same){
 
 /* ---------- análisis ---------- */
 function analyze(skip){
- const chars=new Map,locs=new Map,scenes=[];let c=null,n=0;
+ const chars=new Map,places={},none=[],scenes=[];let c=null,n=0;
  lines(skip).forEach((l,i)=>{
   if(l.type==='character'){c=key(l.text);if(c&&!chars.has(c))chars.set(c,{n:0,first:i})}
   else if(l.type==='dialogue'&&c)chars.get(c).n++;
   else if(l.type!=='paren')c=null;
   if(l.type==='heading'){
-   const k=parseHead(l.text).loc.toUpperCase();
-   if(k&&M==='cine'){const o=locs.get(k)||{n:0,first:i};o.n++;locs.set(k,o)}
+   (l.place?places[l.place]||=[]:none).push(i);
    scenes.push({i,label:++n+'. '+l.text})}
   if(l.type==='act')scenes.push({i,label:l.text,act:1})});
- return{chars,locs,scenes}}
+ return{chars,places,none,scenes}}
 function renderPanels(){
  const a=document.activeElement;
- if(PAN.contains(a)&&a.tagName==='INPUT')return;
- const A=analyze(),lug=PAN.querySelector('nav [data-t=lug]');
- lug.hidden=M==='teatro';if(lug.hidden&&PAN.dataset.t==='lug')PAN.querySelector('nav [data-t=esc]').click();
+ if(PAN.contains(a)&&a.tagName==='INPUT'&&a.closest('li'))return;
+ const A=analyze();
  $('lEsc').innerHTML=A.scenes.map(s=>`<li data-i="${s.i}"${s.act?' class="act"':''}><span>${h(s.label)}</span></li>`).join('')||'<p>Sin escenas todavía.</p>';
  const row=([k,v])=>`<li data-i="${v.first}" data-k="${h(k)}"><span>${h(k)}</span><b>${v.n||''}</b><button data-r aria-label="Renombrar ${h(k)}">✎</button></li>`;
  $('lPer').innerHTML=[...A.chars].sort((a,b)=>b[1].n-a[1].n).map(row).join('')||'<p>Sin personajes todavía.</p>';
- $('lLug').innerHTML=[...A.locs].map(row).join('')||'<p>Sin lugares todavía.</p>';
+ $('lLug').innerHTML=(PL.map(p=>`<li data-p="${h(p.id)}" data-k="${h(p.n)}"><span>${h(p.n)}</span><b>${(A.places[p.id]||[]).length}</b><button data-r aria-label="Renombrar ${h(p.n)}">✎</button><button data-x aria-label="Borrar ${h(p.n)}">✕</button></li>`).join('')||'<p>Sin lugares todavía.</p>')
+  +(A.none.length?`<li data-p="" class="none"><span>${A.none.length} escena${A.none.length>1?'s':''} sin lugar</span></li>`:'');
+ renderSel();
  $('stat').textContent=(ED.textContent.split(/\s+/).filter(Boolean).length)+' pal.'}
 // whole-word mentions of a character, any case; \b does not know accents
 const mentionRe=k=>new RegExp('(?<![\\p{L}\\p{N}])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![\\p{L}\\p{N}])','giu');
@@ -291,27 +294,62 @@ function rename(kind,old,nw,pick=[]){
  [...ED.children].forEach((d,i)=>{
   const t=d.textContent,ty=d.dataset.type;let j=0;
   if(kind==='per'&&ty==='character'&&key(t)===old)set(d,nw+((t.match(/\s*\(.*\)\s*$/)||[''])[0]));
-  if(kind==='per'&&MENT.includes(ty)&&pick.length){const s=t.replace(re,m=>pick.includes(i+':'+j++)?caseLike(m,nw):m);if(s!==t)set(d,s)}
-  if(kind==='lug'&&ty==='heading'){const o=parseHead(t);if(o.loc.toUpperCase()===old){o.loc=nw;set(d,buildHead(o))}}});
+  if(kind==='per'&&MENT.includes(ty)&&pick.length){const s=t.replace(re,m=>pick.includes(i+':'+j++)?caseLike(m,nw):m);if(s!==t)set(d,s)}});
  commit()}
+/* ---------- lugares: lista del autor; cada cabecera apunta a un id ---------- */
+const placeBy=n=>PL.find(p=>p.n.toUpperCase()===n.toUpperCase());
+const tagged=id=>[...ED.children].filter(d=>d.dataset.place===id);
+function addPlace(){
+ const i=$('lugNew'),n=i.value.trim();i.value='';
+ if(!n||placeBy(n))return;
+ commit();PL.push({id:String(PL.reduce((m,p)=>Math.max(m,+p.id||0),0)+1),n});commit()}
+// a name that already exists merges both places
+function renamePlace(id,nw){
+ nw=nw.trim();const p=PL.find(x=>x.id===id),o=nw&&placeBy(nw);
+ if(!p||!nw||nw===p.n)return;
+ commit();
+ if(o&&o!==p){tagged(id).forEach(d=>d.dataset.place=o.id);PL=PL.filter(x=>x!==p)}
+ else p.n=nw;
+ commit()}
+function delPlace(id,n){
+ if(!confirm(`¿Borrar el lugar «${n}»? Sus escenas se quedan sin lugar; el texto no cambia.`))return;
+ commit();tagged(id).forEach(d=>delete d.dataset.place);PL=PL.filter(x=>x.id!==id);commit()}
+// each click on the same place goes to its next scene; id '' = scenes without place
+function jump(id){
+ const A=analyze(),L=id?A.places[id]:A.none;if(!L||!L.length)return;
+ jp={id,k:jp.id===id?(jp.k+1)%L.length:0};goto(L[jp.k])}
+// "Lugar de esta escena": only while the cursor is on a heading
+function renderSel(){
+ const d=last&&last.isConnected&&last.dataset.type==='heading'?last:null;
+ $('lSel').innerHTML=d?`<label>Lugar de esta escena <select>${['<option value="">(ninguno)</option>',...PL.map(p=>`<option value="${h(p.id)}"${p.id===d.dataset.place?' selected':''}>${h(p.n)}</option>`)].join('')}</select></label>`
+  :'<p>Pon el cursor en una cabecera para darle lugar.</p>'}
+PAN.addEventListener('change',ev=>{
+ const d=last,v=ev.target.value;
+ if(!ev.target.closest('#lSel')||!d||!d.isConnected||d.dataset.type!=='heading')return;
+ commit();if(v)d.dataset.place=v;else delete d.dataset.place;commit()});
 PAN.addEventListener('click',ev=>{
  const t=ev.target;
  if(t.dataset.t){PAN.dataset.t=t.dataset.t;PAN.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b===t));PAN.querySelectorAll('section').forEach(s=>s.hidden=s.dataset.s!==t.dataset.t);return}
+ if(t.dataset.add!==undefined){addPlace();return}
  const li=t.closest('li');if(!li)return;
+ if(t.dataset.x!==undefined){delPlace(li.dataset.p,li.dataset.k);return}
  if(t.dataset.r!==undefined){
   const k=li.dataset.k;li.dataset.edit=1;
   li.innerHTML=`<input value="${h(k)}" aria-label="Nuevo nombre"><button data-ok>OK</button>`;
   const i=li.querySelector('input');i.focus();i.select();return}
  if(t.dataset.ok!==undefined){doRename(li);return}
  if(t.tagName==='INPUT')return;
+ if(li.dataset.p!==undefined){jump(li.dataset.p);return}
  goto(+li.dataset.i)});
 PAN.addEventListener('keydown',ev=>{
  if(ev.target.tagName!=='INPUT')return;
+ if(ev.target.id==='lugNew'){if(ev.key==='Enter'){ev.preventDefault();addPlace()}return}
  if(ev.key==='Enter'){ev.preventDefault();doRename(ev.target.closest('li'))}// else this Enter submits the mentions dialog
  if(ev.key==='Escape'){ev.target.blur();renderPanels()}});
 function doRename(li){
  const kind=li.parentNode.id==='lPer'?'per':'lug',old=li.dataset.k,nw=li.querySelector('input').value,up=nw.trim().toUpperCase();
  li.querySelector('input').blur();
+ if(kind==='lug'){renamePlace(li.dataset.p,nw);renderPanels();return}
  const ms=kind==='per'&&up&&up!==old?mentions(old):[];
  if(!ms.length){rename(kind,old,nw);renderPanels();return}
  const MD=$('ment');
@@ -336,14 +374,11 @@ function nearChars(d){
 function sugg(){
  SUG.innerHTML='';ED.querySelectorAll('[data-ghost]').forEach(x=>delete x.dataset.ghost);
  const d=cur();if(!d)return;
- const t=d.dataset.type;let q,list,fn;
- if(t!=='character'&&t!=='heading')return;
- if(t==='character'){q=key(d.textContent);list=nearChars(d);fn=n=>n}
- else{const o=parseHead(d.textContent);q=o.loc.toUpperCase();list=[...analyze(d).locs.keys()];fn=n=>buildHead({...o,loc:n})}
- const L=list.filter(n=>q&&n!==q&&n.startsWith(q));
+ if(d.dataset.type!=='character')return;
+ const q=key(d.textContent),L=nearChars(d).filter(n=>q&&n!==q&&n.startsWith(q));
  L.slice(0,6).forEach(n=>{
-  const b=document.createElement('button');b.textContent=n;b.dataset.v=fn(n);SUG.append(b)});
- if(t!=='character'||!L.length||d===esc||d.textContent.toUpperCase()!==q)return;
+  const b=document.createElement('button');b.textContent=n;b.dataset.v=n;SUG.append(b)});
+ if(!L.length||d===esc||d.textContent.toUpperCase()!==q)return;
  const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setStart(s.anchorNode,s.anchorOffset);
  if(s.isCollapsed&&!r.toString())d.dataset.ghost=L[0].slice(q.length)}
 function applySug(v){const d=cur();if(!d)return;set(d,v);caret(d,9e9);changed();sugg()}
@@ -351,25 +386,26 @@ SUG.addEventListener('pointerdown',ev=>{if(ev.target.dataset.v){ev.preventDefaul
 
 /* ---------- historial y guardado ---------- */
 function snap(){
- const k=JSON.stringify([TI.value,M,lines().map(x=>[x.type,x.text]),getCover()]);
+ const k=JSON.stringify([TI.value,M,rows(),getCover(),PL]);
  if(hist[pos]&&hist[pos].k===k)return;
  const d=cur();let i=-1,o=0;
  if(d){i=[...ED.children].indexOf(d);const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setEnd(s.anchorNode,s.anchorOffset);o=r.toString().length}
  hist=hist.slice(0,pos+1);hist.push({k,i,o});pos++;
  if(hist.length>300){hist.shift();pos--}}
-function save(){const s=$('saved');try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:lines().map(x=>[x.type,x.text]),c:getCover()}));s.textContent='Guardado';s.className=''}
+function save(){const s=$('saved');try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:rows(),c:getCover(),p:PL}));s.textContent='Guardado';s.className=''}
  catch(_){s.textContent='No se pudo guardar: usa Archivo › Guardar .json';s.className='err'}}
 function commit(){clearTimeout(tm);norm();snap();save();renderPanels()}
 function changed(){clearTimeout(tm);tm=setTimeout(commit,400)}
-function load(t,m,L,c){
+function load(t,m,L,c,p){
  M=m;TI.value=t;MO.value=m;ED.dataset.mode=m;setCover(c);
- ED.replaceChildren(...L.map(([ty,tx])=>mk(conv(ty,m),String(tx).replace(/\n/g,' '))));
+ PL=Array.isArray(p)?p.filter(x=>x&&x.id&&x.n).map(x=>({id:String(x.id),n:String(x.n)})):[];jp={};
+ ED.replaceChildren(...L.map(([ty,tx,pl])=>mk(conv(ty,m),String(tx).replace(/\n/g,' '),pl)));
  if(!ED.children.length)ED.append(mk('heading',''));
  TIPO.innerHTML=CYC[m].map(t=>`<option value="${t}">${LABEL[t]}</option>`).join('');
  last=ED.firstChild;TIPO.value=last.dataset.type;
  renderPanels()}
 function restore(e){
- const[t,m,L,c]=JSON.parse(e.k);load(t,m,L,c);save();
+ const[t,m,L,c,p]=JSON.parse(e.k);load(t,m,L,c,p);save();
  ED.focus();const d=ED.children[e.i];if(d)caret(d,e.o)}
 function undo(){commit();if(pos>0)restore(hist[--pos])}
 function redo(){if(pos<hist.length-1)restore(hist[++pos])}
@@ -419,7 +455,7 @@ ED.addEventListener('drop',ev=>ev.preventDefault());
 document.addEventListener('selectionchange',()=>{
  const d=cur();
  ED.querySelectorAll('.cur').forEach(x=>x!==d&&x.classList.remove('cur'));
- if(d){d.classList.add('cur');last=d;if(CYC[M].includes(d.dataset.type))TIPO.value=d.dataset.type;sugg()}});
+ if(d){d.classList.add('cur');const ch=d!==last;last=d;if(ch)renderSel();if(CYC[M].includes(d.dataset.type))TIPO.value=d.dataset.type;sugg()}});
 TIPO.onchange=()=>{if(!last||!last.isConnected)return;ED.focus();caret(last,9e9);setType(last,TIPO.value);changed()};
 $('cyc').addEventListener('pointerdown',ev=>{ev.preventDefault();if(last&&last.isConnected)cycle(last,1)});
 TI.addEventListener('input',changed);
@@ -437,7 +473,7 @@ function toFountain(){
  lines().forEach(l=>{
   const t=l.text.trim();if(!t)return;let s;
   switch(l.type){
-   case'heading':s=HEAD.test(t)?t.toUpperCase():'.'+t.toUpperCase();break;
+   case'heading':{const p=PL.find(x=>x.id===l.place);s=(HEAD.test(t)?'':'.')+t.toUpperCase()+(p?` [[lugar: ${p.n}]]`:'');break}
    case'character':s=t.toUpperCase();break;
    case'paren':s='('+unparen(t)+')';break;
    case'dialogue':s=t;break;
@@ -448,21 +484,23 @@ function toFountain(){
   o+=(cont?'':'\n')+s+'\n';prev=l.type});
  return o}
 function parseFountain(src){
- src=src.replace(/\r/g,'').replace(/\/\*[\s\S]*?\*\//g,'').replace(/\[\[[\s\S]*?\]\]/g,'');
- const R=src.split('\n'),meta={},out=[];let i=0;
+ // notes are dropped, except [[lugar: …]], which tags its heading
+ src=src.replace(/\r/g,'').replace(/\/\*[\s\S]*?\*\//g,'').replace(/\[\[(?!\s*lugar:)[\s\S]*?\]\]/gi,'');
+ const R=src.split('\n'),meta={},out=[],P=[];let i=0;
+ const pid=n=>{if(!n)return;let p=P.find(x=>x.n.toUpperCase()===n.toUpperCase());if(!p)P.push(p={id:String(P.length+1),n});return p.id};
  const KEY=/^(Title|Credit|Author|Authors|Source|Revision|Draft date|Date|Contact|Copyright|Notes|Mode)\s*:\s*(.*)/i;
  if(KEY.test(R[0]||'')){let k;for(;i<R.length&&R[i].trim();i++){const m=R[i].match(KEY);
   if(m){k=m[1].toLowerCase();meta[k]=m[2].trim()}else if(k&&/^(\t| {3})/.test(R[i]))meta[k]+=(meta[k]?'\n':'')+R[i].trim()}}
  const teatro=(meta.mode||'').toLowerCase()==='teatro';
  let blank=true,dlg=false;
  for(;i<R.length;i++){
-  const t=R[i].trim();
+  let pl='';const t=R[i].replace(/\s*\[\[\s*lugar:\s*([^\]]*?)\s*\]\]/gi,(_,n)=>(pl=n,'')).trim();
   if(!t){blank=true;dlg=false;continue}
   const nextBlank=!(R[i+1]||'').trim();
   if(dlg){out.push(/^\(.*\)$/.test(t)?['paren',unparen(t)]:['dialogue',t]);blank=false;continue}
   if(t[0]==='#'){if(teatro)out.push(['act',t.replace(/^#+\s*/,'')])}
   else if(t[0]==='=');
-  else if(/^\.(?!\.)/.test(t)||HEAD.test(t))out.push(['heading',t.replace(/^\./,'').replace(/\s*#[^#]+#\s*$/,'')]);
+  else if(/^\.(?!\.)/.test(t)||HEAD.test(t)){const x=['heading',t.replace(/^\./,'').replace(/\s*#[^#]+#\s*$/,'')],id=pid(pl);if(id)x.push(id);out.push(x)}
   else if(t[0]==='>'&&t.slice(-1)!=='<')out.push(['transition',t.slice(1).trim()]);
   else if(blank&&nextBlank&&/^[^a-z]*TO:$/.test(t))out.push(['transition',t]);
   else if(blank&&!nextBlank&&(t[0]==='@'||(t===t.toUpperCase()&&/\p{L}/u.test(t)&&t[0]!=='!'))){out.push(['character',t.replace(/^@/,'').replace(/\s*\^$/,'')]);dlg=true}
@@ -470,7 +508,7 @@ function parseFountain(src){
   blank=false}
  const c={credit:meta.credit,author:meta.author||meta.authors,source:meta.source,version:meta.revision,date:meta['draft date']||meta.date,...contactParts(meta.contact||''),copyright:meta.copyright,notes:meta.notes};
  c.on=Object.values(c).some(Boolean);
- return{t:(meta.title||'Sin título').replace(/\n/g,' '),m:teatro?'teatro':'cine',l:out,c}}
+ return{t:(meta.title||'Sin título').replace(/\n/g,' '),m:teatro?'teatro':'cine',l:out,c,p:P}}
 
 /* ---------- menú Archivo ---------- */
 function dl(name,text,type){
@@ -487,7 +525,7 @@ $('menu').addEventListener('click',ev=>{
  $('menu').open=false;
  if(a==='new'){if(confirm('¿Empezar un guion nuevo? Puedes recuperar el actual con Ctrl+Z.')){commit();load('Sin título',M,[]);commit()}}
  if(a==='open')$('fileIn').click();
- if(a==='json')dl(slug()+'.intdia.json',JSON.stringify({v:1,t:TI.value,m:M,l:lines().map(x=>[x.type,x.text]),c:getCover()}),'application/json');
+ if(a==='json')dl(slug()+'.intdia.json',JSON.stringify({v:1,t:TI.value,m:M,l:rows(),c:getCover(),p:PL}),'application/json');
  if(a==='fountain')dl(slug()+'.fountain',toFountain(),'text/plain');
  if(a==='cover')openCover();
  if(a==='print')print()});
@@ -495,7 +533,7 @@ $('fileIn').addEventListener('change',async ev=>{
  const f=ev.target.files[0];ev.target.value='';if(!f)return;
  const txt=await f.text();let d;
  try{d=/\.json$/i.test(f.name)?JSON.parse(txt):parseFountain(txt)}catch(_){alert('No se pudo leer el archivo.');return}
- commit();load(d.t||'Sin título',d.m==='teatro'?'teatro':'cine',d.l||[],d.c);commit()});
+ commit();load(d.t||'Sin título',d.m==='teatro'?'teatro':'cine',d.l||[],d.c,d.p);commit()});
 addEventListener('beforeprint',()=>{const c=getCover();$('ptitle').textContent=c.on?'':TI.value;$('pcover').innerHTML=c.on?coverHTML(c):''});
 
 /* ---------- arranque ---------- */
@@ -503,7 +541,7 @@ try{setTheme(localStorage.getItem('guion:theme')||'')}catch(_){}
 (function(){
  let d={t:'Sin título',m:'cine',l:DEMO};
  try{const s=JSON.parse(localStorage.getItem('guion:v1'));if(s&&Array.isArray(s.l))d=s}catch(_){}
- load(d.t,d.m==='teatro'?'teatro':'cine',d.l,d.c);snap()})();
+ load(d.t,d.m==='teatro'?'teatro':'cine',d.l,d.c,d.p);snap()})();
 </script>
 </body>
 </html>

@@ -77,13 +77,6 @@ with sync_playwright() as pw:
     ch = p.evaluate("lines().filter(l=>l.type=='character').map(l=>l.text)")
     check("renombrar ANA -> MARÍA en todas las llamadas", "ANA" not in ch and ch.count("MARÍA") == 2, ch)
     check("y en la mención marcada de la acción", "MARÍA espera" in p.evaluate("lines()[1].text"), p.evaluate("lines()[1].text"))
-    # fusionar
-    # rename lugar
-    p.click('#panel nav button[data-t=lug]')
-    p.click("#lLug li[data-k=COCINA] button[data-r]")
-    p.keyboard.press("Control+A"); p.keyboard.type("Salón"); p.keyboard.press("Enter")
-    hd = p.evaluate("lines().filter(l=>l.type=='heading').map(l=>l.text)")
-    check("renombrar lugar conserva INT. y hora", hd[0] == "INT. SALÓN - NOCHE", hd)
 
     # 3. roundtrip fountain
     ok = p.evaluate("""()=>{const a=lines().map(l=>[l.type,l.type==='paren'?unparen(l.text):l.text]);
@@ -92,9 +85,6 @@ with sync_playwright() as pw:
 
     # 4. undo
     p.click("#ed > div:first-child")
-    p.keyboard.press("Control+z")
-    ch = p.evaluate("lines().filter(l=>l.type=='character').map(l=>l.text)")
-    check("deshacer renombrado de lugar", p.evaluate("lines()[0].text") == "INT. COCINA - NOCHE", p.evaluate("lines()[0].text"))
     p.keyboard.press("Control+z")
     ch = p.evaluate("lines().filter(l=>l.type=='character').map(l=>l.text)")
     check("deshacer renombrado de personaje", "ANA" in ch and "MARÍA" not in ch and "ANA espera" in p.evaluate("lines()[1].text"), ch)
@@ -124,8 +114,8 @@ with sync_playwright() as pw:
       const f=toFountain();const d=parseFountain(f);return d.m==='teatro'&&(JSON.stringify(a)===JSON.stringify(N(d.l))||JSON.stringify([a,d.l,f]))}""")
     check("Fountain ida y vuelta (teatro, con actos)", ok is True, ok)
     p.wait_for_timeout(500)
-    lug = p.evaluate("[analyze().locs.size, document.querySelector('#panel nav [data-t=lug]').hidden]")
-    check("teatro: sin lugares y pestaña Lugares oculta", lug == [0, True], lug)
+    lug = p.evaluate("[PL.length, document.querySelector('#panel nav [data-t=lug]').hidden]")
+    check("teatro: las cabeceras no crean lugares y la pestaña Lugares se ve", lug == [0, False], lug)
 
     # 6. móvil
     m = ctx.new_page(); m.set_viewport_size({"width": 360, "height": 700})
@@ -280,6 +270,72 @@ with sync_playwright() as pw:
     check("pegar 3 líneas en medio: HOLAA, B, CMUNDO", texts(v) == ["HOLAA", "B", "CMUNDO"], texts(v))
     v.keyboard.type("x")
     check("el cursor queda tras lo pegado", texts(v)[-1] == "CxMUNDO", texts(v))
+
+    # 12. lugares como etiquetas
+    w = b.new_context(viewport={"width": 1100, "height": 800}).new_page()
+    w.on("pageerror", lambda e: errs.append(str(e)))
+    w.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
+    w.on("dialog", lambda d: d.accept())
+    w.goto(URL)
+    lug_rows = lambda: w.evaluate("[...document.querySelectorAll('#lLug li')].map(l=>l.querySelector('span').textContent+'|'+(l.querySelector('b')?.textContent??''))")
+    at = lambda: w.evaluate("[...ED.children].indexOf(cur())")
+    def tag(i, name):
+        w.click(f"#ed > div:nth-child({i})"); w.wait_for_timeout(50)
+        w.select_option("#lSel select", label=name)
+    for m in ("cine", "teatro"):
+        HD = "[['heading','INT/DIA. Un caballo corre por una playa'],['heading','INT. DÍA. Un almacén'],['heading','EXT. CALLE - NOCHE'],['heading','int/dia. casa'],['character','ANA'],['dialogue','Hola.']]"
+        w.evaluate(f"load('x','{m}',{HD});commit()")
+        check(f"escribir cabeceras no crea lugares ({m})", w.evaluate("PL.length") == 0)
+        w.click('#panel nav button[data-t=lug]')
+        for n in ("El salón", "La playa"):
+            w.fill("#lugNew", n); w.press("#lugNew", "Enter")
+        w.fill("#lugNew", "el SALÓN"); w.press("#lugNew", "Enter")
+        check(f"alta de lugares sin repetir nombre ({m})", w.evaluate("PL.map(p=>p.n)") == ["El salón", "La playa"], w.evaluate("PL"))
+        w.click("#ed > div:nth-child(5)"); w.wait_for_timeout(50)
+        check(f"fuera de una cabecera no hay selector ({m})", w.locator("#lSel select").count() == 0)
+        tag(1, "El salón"); tag(2, "La playa"); tag(3, "El salón")
+        check(f"recuentos y 1 escena sin lugar ({m})", lug_rows() == ["El salón|2", "La playa|1", "1 escena sin lugar|"], lug_rows())
+        check(f"el selector muestra el lugar de la cabecera ({m})", w.evaluate("$('lSel').querySelector('select').selectedOptions[0].text") == "El salón")
+        check(f"etiquetar no toca el texto ({m})", w.evaluate("lines()[0].text") == "INT/DIA. Un caballo corre por una playa")
+        w.click("#lLug li[data-k='El salón'] span"); w.wait_for_timeout(50); a1 = at()
+        w.click("#lLug li[data-k='El salón'] span"); w.wait_for_timeout(50); a2 = at()
+        w.click("#lLug li[data-k='El salón'] span"); w.wait_for_timeout(50); a3 = at()
+        check(f"pulsar un lugar recorre sus escenas ({m})", [a1, a2, a3] == [0, 2, 0], [a1, a2, a3])
+        w.click("#lLug li.none span"); w.wait_for_timeout(50)
+        check(f"pulsar «sin lugar» lleva a esa escena ({m})", at() == 3, at())
+        w.click("#ed > div:nth-child(1)"); w.keyboard.press("Control+z")
+        check(f"deshacer quita la última etiqueta ({m})", w.evaluate("lines()[2].place") is None, w.evaluate("lines()[2]"))
+        w.keyboard.press("Control+y")
+        check(f"rehacer la devuelve ({m})", w.evaluate("lines()[2].place") == "1", w.evaluate("lines()[2]"))
+        before = texts(w)
+        w.click("#lLug li[data-k='El salón'] button[data-r]")
+        w.keyboard.press("Control+A"); w.keyboard.type("Salón grande"); w.keyboard.press("Enter")
+        check(f"renombrar mantiene las escenas y no toca texto ({m})", lug_rows()[0] == "Salón grande|2" and texts(w) == before, [lug_rows(), texts(w)])
+        f = w.evaluate("toFountain()"); d = w.evaluate("parseFountain(toFountain())")
+        names = lambda L, P: [next((p["n"] for p in P if len(x) > 2 and p["id"] == x[2]), None) for x in L if x[0] == "heading"]
+        check(f"Fountain lleva [[lugar: …]] ({m})", "[[lugar: La playa]]" in f, f)
+        check(f"Fountain ida y vuelta conserva etiquetas ({m})", names(d["l"], d["p"]) == ["Salón grande", "La playa", "Salón grande", None]
+              and [x[1] for x in d["l"] if x[0] == "heading"][1] == "INT. DÍA. UN ALMACÉN", d)
+        w.reload(); w.wait_for_timeout(100)
+        check(f"autoguardado conserva lista y etiquetas ({m})", w.evaluate("PL.map(p=>p.n)") == ["Salón grande", "La playa"] and w.evaluate("lines().map(l=>l.place||'')").count("1") == 2)
+        w.click('#panel nav button[data-t=lug]')
+        w.click("#lLug li[data-k='La playa'] button[data-r]")
+        w.keyboard.press("Control+A"); w.keyboard.type("salón GRANDE"); w.keyboard.press("Enter")
+        check(f"renombrar a un nombre existente fusiona ({m})", lug_rows() == ["Salón grande|3", "1 escena sin lugar|"], lug_rows())
+        w.click("#ed > div:nth-child(1)"); w.keyboard.press("Control+z")
+        w.click("#lLug li[data-k='Salón grande'] button[data-x]")
+        check(f"borrar deja sus escenas sin lugar y no toca texto ({m})", w.evaluate("PL.length") == 1 and lug_rows() == ["La playa|1", "3 escenas sin lugar|"] and texts(w) == before, [lug_rows(), texts(w)])
+        w.click("#ed > div:nth-child(1)"); w.keyboard.press("Control+z")
+        check(f"deshacer el borrado devuelve lista y etiquetas ({m})", lug_rows() == ["Salón grande|2", "La playa|1", "1 escena sin lugar|"], lug_rows())
+    old = '{"v":1,"t":"Viejo","m":"cine","l":[["heading","INT. COCINA - NOCHE"],["action","a"]]}'
+    w.set_input_files("#fileIn", files=[{"name": "viejo.intdia.json", "mimeType": "application/json", "buffer": old.encode()}])
+    w.wait_for_timeout(200)
+    check("un JSON anterior carga sin lugares", w.evaluate("[TI.value,PL.length,lines().length]") == ["Viejo", 0, 2])
+    w.evaluate(f"localStorage.setItem('guion:v1',JSON.stringify({old}))"); w.reload()
+    check("un autoguardado anterior carga sin lugares", w.evaluate("[TI.value,PL.length,lines().length]") == ["Viejo", 0, 2])
+    w.evaluate("PL=[{id:'1',n:'Cocina'}];ED.firstChild.dataset.place='1';commit()")
+    w.evaluate("const d=JSON.parse(JSON.stringify({v:1,t:TI.value,m:M,l:rows(),c:getCover(),p:PL}));load('y','cine',[]);load(d.t,d.m,d.l,d.c,d.p)")
+    check("JSON ida y vuelta conserva lista y etiqueta", w.evaluate("[PL[0].n,lines()[0].place]") == ["Cocina", "1"])
     b.close()
 
 print("ERRORES JS:", errs)

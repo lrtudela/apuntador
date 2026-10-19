@@ -13,7 +13,7 @@ Editor web de guiones para cine y teatro, inspirado en Fade In. Proyecto de port
 
 - El DOM es la fuente de verdad: `#ed` contiene un `div` por línea con `data-type`. `lines()` lo lee; no hay un modelo de datos paralelo.
 - Los personajes se deducen del texto (líneas `character`), no hay registro aparte. Renombrar reescribe esas líneas. Si el nombre nuevo ya existe, se fusionan. Las menciones en acción, acotación, paréntesis y diálogo solo cambian si el autor las marca en la vista previa (`#ment`).
-- Los lugares NO se deducen del texto (las cabeceras no tienen formato fijo): son una lista del autor y cada cabecera puede llevar una etiqueta. Decidido, pendiente de implementar: ver `docs/mejoras/Lugares como etiquetas.md`. Hasta entonces, el código actual aún deduce lugares en cine; no lo amplíes. Cuando se implemente, actualiza este punto.
+- Los lugares NO se deducen del texto (las cabeceras no tienen formato fijo), en ningún modo: son una lista del autor (`PL`, `[{id,n}]`) y cada cabecera puede llevar una etiqueta en `data-place` con el id. Se asignan desde el panel Lugares con el cursor en la cabecera; el texto de la cabecera nunca se toca ni se interpreta. Renombrar cambia solo el nombre en la lista (si ya existe, se fusionan); borrar deja sus escenas sin etiqueta. La lista viaja como `p` en el autoguardado, el JSON y el historial; en `l`, las cabeceras etiquetadas llevan un tercer valor con el id. En Fountain, la etiqueta va como nota `[[lugar: Nombre]]` al final de la cabecera.
 - Tipos de línea. Cine: action, character, dialogue, paren, heading, transition. Teatro: stage, character, dialogue, paren, heading, act. Tab rota por `CYC[modo]`; Enter usa `NEXT[modo]`. El primer Tab en la línea vacía que Enter acaba de crear salta a `ALT[modo]` (paréntesis tras personaje; acción o acotación tras diálogo) y después sigue el ciclo normal.
 - Las líneas `paren` guardan los paréntesis dentro del texto; se quitan al exportar y al cambiar de tipo.
 - Deshacer y rehacer son propios (snapshots en `hist`), no los nativos del navegador, porque los cambios de tipo y los renombrados rompen la pila nativa.
@@ -37,7 +37,7 @@ playwright install chromium
 python tests/test_int_dia.py
 ```
 
-Deben pasar todas y no haber errores de JS. Cubren: rotación de tipos con Tab, Enter por modo, autocompletado, renombrar personajes y lugares, ida y vuelta Fountain en cine y teatro, deshacer y rehacer, y 360 px sin scroll horizontal. Las pruebas llaman a funciones globales de `index.html` (`lines`, `analyze`, `toFountain`, `parseFountain`, `unparen`) y a los elementos `ED` y `SUG`. Si renombras alguno, actualiza también las pruebas.
+Deben pasar todas y no haber errores de JS. Cubren: rotación de tipos con Tab, Enter por modo, autocompletado, renombrar personajes, lugares como etiquetas (alta, recuentos, renombrar, borrar, saltos), ida y vuelta Fountain en cine y teatro, deshacer y rehacer, y 360 px sin scroll horizontal. Las pruebas llaman a funciones globales de `index.html` (`lines`, `rows`, `analyze`, `toFountain`, `parseFountain`, `unparen`, `load`, `PL`) y a los elementos `ED` y `SUG`. Si renombras alguno, actualiza también las pruebas.
 
 ## Pendiente y problemas conocidos
 
