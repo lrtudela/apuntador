@@ -7,20 +7,28 @@
 <style>
 :root{--bg:#0a0d0a;--paper:#0f150f;--fg:#c9f7c0;--dim:#6e9a68;--acc:#ffd23f;--ln:#2f452f}
 [data-theme=papel]{--bg:#d9d5c9;--paper:#fffef8;--fg:#1b1b1b;--dim:#5f5b50;--acc:#b3261e;--ln:#b0ac9f}
+[data-theme=ambar]{--bg:#16110b;--fg:#e8c27a;--acc:#ff9f43}
+[data-theme=sepia]{--bg:#1c1815;--fg:#d9cbb5;--acc:#e0a458}
+[data-theme=azul]{--bg:#0f1522;--fg:#c8d3e8;--acc:#ffd23f}
+[data-theme=salvia]{--bg:#141914;--fg:#a9c3a1;--acc:#ffd23f}
+[data-theme=vapor]{--bg:#1a1426;--fg:#e6d9f2;--acc:#ff71ce}
+:is([data-theme=ambar],[data-theme=sepia],[data-theme=azul],[data-theme=salvia],[data-theme=vapor]){--paper:color-mix(in srgb,var(--fg) 5%,var(--bg));--dim:color-mix(in srgb,var(--fg) 70%,var(--bg));--ln:color-mix(in srgb,var(--fg) 25%,var(--bg))}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{display:flex;flex-direction:column;height:100dvh;background:var(--bg);color:var(--fg);font:16px/1.4 "Courier New",Courier,monospace}
 button,select,input,summary{font:inherit;color:inherit;background:var(--paper);border:2px solid var(--ln);padding:.3rem .6rem;min-height:42px;border-radius:0}
 button,summary{cursor:pointer}
 button:hover,button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{border-color:var(--acc);outline:none}
-header{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border-bottom:2px solid var(--ln);background:var(--paper)}
+header{position:relative;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border-bottom:2px solid var(--ln);background:var(--paper)}
 #title{flex:1 1 140px;min-width:0;font-weight:700}
 #stat{color:var(--dim);font-size:.85rem}
-details{position:relative}
+details{position:static}
 summary{list-style:none;display:flex;align-items:center}
 summary::-webkit-details-marker{display:none}
-details>div{position:absolute;right:0;top:100%;z-index:9;display:flex;flex-direction:column;gap:2px;padding:4px;background:var(--paper);border:2px solid var(--acc);min-width:210px}
+details>div{position:absolute;right:8px;top:100%;z-index:9;display:flex;flex-direction:column;gap:2px;padding:4px;background:var(--paper);border:2px solid var(--acc);min-width:210px}
 details>div button{text-align:left}
+details>div label{display:flex;align-items:center;gap:6px;padding-left:.6rem}
+details>div select{flex:1}
 #main{flex:1;display:flex;min-height:0;position:relative}
 #panel{position:absolute;inset:0 auto 0 0;width:min(86vw,320px);background:var(--paper);border-right:2px solid var(--ln);transform:translateX(-100%);transition:transform .15s;z-index:5;overflow:auto;padding:8px}
 #panel.open{transform:none}
@@ -81,7 +89,9 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   <button data-act="json">Guardar .json</button>
   <button data-act="fountain">Exportar .fountain</button>
   <button data-act="print">Imprimir / PDF</button>
-  <button data-act="theme">Cambiar tema</button>
+  <label>Tema <select id="theme">
+   <option value="">Verde terminal</option><option value="papel">Papel</option><option value="ambar">Ámbar</option><option value="sepia">Sepia nocturna</option><option value="azul">Azul noche</option><option value="salvia">Verde salvia</option><option value="vapor">Vaporwave</option>
+  </select></label>
  </div></details>
  <span id="stat"></span>
 </header>
@@ -366,9 +376,11 @@ function dl(name,text,type){
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();
  setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 const slug=()=>(TI.value||'guion').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'guion';
-function setTheme(p){
- if(p)document.documentElement.dataset.theme='papel';else delete document.documentElement.dataset.theme;
- try{localStorage.setItem('guion:theme',p?'papel':'')}catch(_){}}
+function setTheme(t){
+ const S=$('theme');S.value=t;if(S.value!==t)t=S.value='';
+ if(t)document.documentElement.dataset.theme=t;else delete document.documentElement.dataset.theme;
+ try{localStorage.setItem('guion:theme',t)}catch(_){}}
+$('theme').onchange=ev=>setTheme(ev.target.value);
 $('menu').addEventListener('click',ev=>{
  const a=ev.target.dataset.act;if(!a)return;
  $('menu').open=false;
@@ -376,8 +388,7 @@ $('menu').addEventListener('click',ev=>{
  if(a==='open')$('fileIn').click();
  if(a==='json')dl(slug()+'.apuntador.json',JSON.stringify({v:1,t:TI.value,m:M,l:lines().map(x=>[x.type,x.text])}),'application/json');
  if(a==='fountain')dl(slug()+'.fountain',toFountain(),'text/plain');
- if(a==='print')print();
- if(a==='theme')setTheme(!document.documentElement.dataset.theme)});
+ if(a==='print')print()});
 $('fileIn').addEventListener('change',async ev=>{
  const f=ev.target.files[0];ev.target.value='';if(!f)return;
  const txt=await f.text();let d;
@@ -386,7 +397,7 @@ $('fileIn').addEventListener('change',async ev=>{
 addEventListener('beforeprint',()=>{$('ptitle').textContent=TI.value});
 
 /* ---------- arranque ---------- */
-try{setTheme(localStorage.getItem('guion:theme')==='papel')}catch(_){}
+try{setTheme(localStorage.getItem('guion:theme')||'')}catch(_){}
 (function(){
  let d={t:'Sin título',m:'cine',l:DEMO};
  try{const s=JSON.parse(localStorage.getItem('guion:v1'));if(s&&Array.isArray(s.l))d=s}catch(_){}
