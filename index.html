@@ -142,7 +142,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <b>Ctrl+Espacio</b>: autocompleta personaje o lugar.<br>
    Al escribir un personaje se propone en gris el más cercano: <b>Enter</b> lo acepta, <b>Esc</b> lo descarta.<br>
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
-   Pulsa ✎ junto a un personaje o lugar para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en acciones o acotaciones, eliges qué menciones cambiar.</p>
+   Pulsa ✎ junto a un personaje o lugar para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.</p>
   </section>
  </aside>
  <div id="wrap">
@@ -275,7 +275,7 @@ function renderPanels(){
  $('stat').textContent=(ED.textContent.split(/\s+/).filter(Boolean).length)+' pal.'}
 // whole-word mentions of a character, any case; \b does not know accents
 const mentionRe=k=>new RegExp('(?<![\\p{L}\\p{N}])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![\\p{L}\\p{N}])','giu');
-const MENT=['action','stage','paren'];
+const MENT=['action','stage','paren','dialogue'];
 // write nw the way the mention was written: ANA, Ana or ana
 const caseLike=(m,s)=>m===m.toUpperCase()?s:m===m.toLowerCase()?s.toLowerCase():s.toLowerCase().replace(/(^|[^\p{L}])(\p{L})/gu,(_,a,b)=>a+b.toUpperCase());
 function mentions(old){
