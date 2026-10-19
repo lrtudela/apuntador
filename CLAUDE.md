@@ -12,7 +12,7 @@ Editor web de guiones para cine y teatro, inspirado en Fade In. Proyecto de port
 ## Cómo funciona (decisiones que no hay que deshacer)
 
 - El DOM es la fuente de verdad: `#ed` contiene un `div` por línea con `data-type`. `lines()` lo lee; no hay un modelo de datos paralelo.
-- Los personajes se deducen del texto (líneas `character`), no hay registro aparte. Renombrar reescribe esas líneas. Si el nombre nuevo ya existe, se fusionan.
+- Los personajes se deducen del texto (líneas `character`), no hay registro aparte. Renombrar reescribe esas líneas. Si el nombre nuevo ya existe, se fusionan. Las menciones en acción, acotación y paréntesis solo cambian si el autor las marca en la vista previa (`#ment`); los diálogos no se tocan.
 - Los lugares NO se deducen del texto (las cabeceras no tienen formato fijo): son una lista del autor y cada cabecera puede llevar una etiqueta. Decidido, pendiente de implementar: ver `docs/mejoras/Lugares como etiquetas.md`. Hasta entonces, el código actual aún deduce lugares en cine; no lo amplíes. Cuando se implemente, actualiza este punto.
 - Tipos de línea. Cine: action, character, dialogue, paren, heading, transition. Teatro: stage, character, dialogue, paren, heading, act. Tab rota por `CYC[modo]`; Enter usa `NEXT[modo]`. El primer Tab en la línea vacía que Enter acaba de crear salta a `ALT[modo]` (paréntesis tras personaje; acción o acotación tras diálogo) y después sigue el ciclo normal.
 - Las líneas `paren` guardan los paréntesis dentro del texto; se quitan al exportar y al cambiar de tipo.

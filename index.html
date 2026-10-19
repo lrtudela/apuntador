@@ -46,18 +46,23 @@ details>div select{flex:1}
 @media(min-width:900px){#panel{position:static;transform:none;width:300px;flex:none}#bpanel{display:none}}
 #wrap{flex:1;overflow:auto;padding:16px}
 #ptitle,#pcover{display:none}
-#cover{width:min(34rem,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:12px;background:var(--paper);color:var(--fg);border:2px solid var(--acc)}
-#cover::backdrop{background:rgb(0 0 0/.6)}
-#cover h2{margin:0 0 8px;font-size:1.1rem;color:var(--acc)}
-#cover form{display:flex;flex-direction:column;gap:8px}
+dialog{width:min(34rem,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:12px;background:var(--paper);color:var(--fg);border:2px solid var(--acc)}
+dialog::backdrop{background:rgb(0 0 0/.6)}
+dialog h2{margin:0 0 8px;font-size:1.1rem;color:var(--acc)}
+dialog form{display:flex;flex-direction:column;gap:8px}
 #cover label{display:flex;flex-direction:column;gap:2px;color:var(--dim)}
 #cover input,#cover textarea{background:var(--bg);color:var(--fg)}
 #cover textarea{font:inherit;border:2px solid var(--ln);padding:.3rem .6rem;resize:vertical}
 #cover textarea:focus-visible{border-color:var(--acc);outline:none}
 #cover .chk{flex-direction:row;align-items:center;color:var(--fg)}
 #cover .chk input{min-height:0;width:22px;height:22px;accent-color:var(--acc)}
-#cover .act{display:flex;gap:6px}
-#cover .act button{flex:1}
+dialog .act{display:flex;gap:6px}
+dialog .act button{flex:1}
+#ment p{margin:0;color:var(--dim)}
+#ment ul{list-style:none;margin:0;padding:0;max-height:50dvh;overflow:auto}
+#ment label{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--ln);overflow-wrap:anywhere}
+#ment input{flex:none;width:22px;height:22px;margin:0;accent-color:var(--acc)}
+#ment b{color:var(--acc)}
 #ed{max-width:62ch;margin:0 auto;padding:8px 0 50vh;outline:none;caret-color:var(--acc);white-space:pre-wrap;overflow-wrap:anywhere}
 #ed>div{margin-top:1em;min-height:1.4em}
 #ed>div.cur{background:color-mix(in srgb,var(--acc) 9%,transparent)}
@@ -137,7 +142,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <b>Ctrl+Espacio</b>: autocompleta personaje o lugar.<br>
    Al escribir un personaje se propone en gris el más cercano: <b>Enter</b> lo acepta, <b>Esc</b> lo descarta.<br>
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
-   Pulsa ✎ junto a un personaje o lugar para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan.</p>
+   Pulsa ✎ junto a un personaje o lugar para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en acciones o acotaciones, eliges qué menciones cambiar.</p>
   </section>
  </aside>
  <div id="wrap">
@@ -165,6 +170,12 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  <label>Notas <textarea name="notes" rows="2"></textarea></label>
  <label class="chk"><input type="checkbox" name="on"> Imprimir portada</label>
  <div class="act"><button value="ok">Guardar</button><button value="">Cancelar</button></div>
+</form></dialog>
+<dialog id="ment" aria-labelledby="mnh"><form method="dialog">
+ <h2 id="mnh">Menciones</h2>
+ <p>Marca las menciones del texto que también deben cambiar. Los nombres de personaje cambian siempre.</p>
+ <ul id="mlist"></ul>
+ <div class="act"><button value="ok">Renombrar</button><button value="">Cancelar</button></div>
 </form></dialog>
 <input type="file" id="fileIn" hidden accept=".json,.fountain,.txt">
 <script>
@@ -262,12 +273,24 @@ function renderPanels(){
  $('lPer').innerHTML=[...A.chars].sort((a,b)=>b[1].n-a[1].n).map(row).join('')||'<p>Sin personajes todavía.</p>';
  $('lLug').innerHTML=[...A.locs].map(row).join('')||'<p>Sin lugares todavía.</p>';
  $('stat').textContent=(ED.textContent.split(/\s+/).filter(Boolean).length)+' pal.'}
-function rename(kind,old,nw){
+// whole-word mentions of a character, any case; \b does not know accents
+const mentionRe=k=>new RegExp('(?<![\\p{L}\\p{N}])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![\\p{L}\\p{N}])','giu');
+const MENT=['action','stage','paren'];
+// write nw the way the mention was written: ANA, Ana or ana
+const caseLike=(m,s)=>m===m.toUpperCase()?s:m===m.toLowerCase()?s.toLowerCase():s.toLowerCase().replace(/(^|[^\p{L}])(\p{L})/gu,(_,a,b)=>a+b.toUpperCase());
+function mentions(old){
+ const re=mentionRe(old),out=[];
+ [...ED.children].forEach((d,i)=>{
+  if(!MENT.includes(d.dataset.type))return;let j=0;
+  for(const m of d.textContent.matchAll(re))out.push({id:i+':'+j++,m:m[0],at:m.index,t:d.textContent})});
+ return out}
+function rename(kind,old,nw,pick=[]){
  nw=nw.trim().toUpperCase();if(!nw||nw===old)return;
- commit();
- [...ED.children].forEach(d=>{
-  const t=d.textContent,ty=d.dataset.type;
+ commit();const re=mentionRe(old);
+ [...ED.children].forEach((d,i)=>{
+  const t=d.textContent,ty=d.dataset.type;let j=0;
   if(kind==='per'&&ty==='character'&&key(t)===old)set(d,nw+((t.match(/\s*\(.*\)\s*$/)||[''])[0]));
+  if(kind==='per'&&MENT.includes(ty)&&pick.length){const s=t.replace(re,m=>pick.includes(i+':'+j++)?caseLike(m,nw):m);if(s!==t)set(d,s)}
   if(kind==='lug'&&ty==='heading'){const o=parseHead(t);if(o.loc.toUpperCase()===old){o.loc=nw;set(d,buildHead(o))}}});
  commit()}
 PAN.addEventListener('click',ev=>{
@@ -283,11 +306,18 @@ PAN.addEventListener('click',ev=>{
  goto(+li.dataset.i)});
 PAN.addEventListener('keydown',ev=>{
  if(ev.target.tagName!=='INPUT')return;
- if(ev.key==='Enter')doRename(ev.target.closest('li'));
+ if(ev.key==='Enter'){ev.preventDefault();doRename(ev.target.closest('li'))}// else this Enter submits the mentions dialog
  if(ev.key==='Escape'){ev.target.blur();renderPanels()}});
 function doRename(li){
- const kind=li.parentNode.id==='lPer'?'per':'lug',nw=li.querySelector('input').value;
- li.querySelector('input').blur();rename(kind,li.dataset.k,nw);renderPanels()}
+ const kind=li.parentNode.id==='lPer'?'per':'lug',old=li.dataset.k,nw=li.querySelector('input').value,up=nw.trim().toUpperCase();
+ li.querySelector('input').blur();
+ const ms=kind==='per'&&up&&up!==old?mentions(old):[];
+ if(!ms.length){rename(kind,old,nw);renderPanels();return}
+ const MD=$('ment');
+ $('mlist').innerHTML=ms.map(o=>{const a=Math.max(0,o.at-30),z=o.at+o.m.length;
+  return `<li><label><input type="checkbox" value="${o.id}"${o.m===o.m.toLowerCase()?'':' checked'}><span>${a?'…':''}${h(o.t.slice(a,o.at))}<b>${h(o.m)}</b>${h(o.t.slice(z,z+30))}${z+30<o.t.length?'…':''}</span></label></li>`}).join('');
+ MD.returnValue='';MD.showModal();
+ MD.onclose=()=>{if(MD.returnValue==='ok')rename(kind,old,nw,[...MD.querySelectorAll('input:checked')].map(c=>c.value));renderPanels()}}
 function goto(i){
  const d=ED.children[i];if(!d)return;
  ED.focus();caret(d,0);d.scrollIntoView({block:'center'});

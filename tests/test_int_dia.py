@@ -72,8 +72,11 @@ with sync_playwright() as pw:
     check("lista personajes", "ANA" in items and "LUIS" in items, items)
     p.click("#lPer li[data-k=ANA] button[data-r]")
     p.keyboard.press("Control+A"); p.keyboard.type("María"); p.keyboard.press("Enter")
+    check("ANA aparece en la acción: se abre la vista previa", p.evaluate("$('ment').open"))
+    p.click("#ment button[value=ok]"); p.wait_for_timeout(100)
     ch = p.evaluate("lines().filter(l=>l.type=='character').map(l=>l.text)")
     check("renombrar ANA -> MARÍA en todas las llamadas", "ANA" not in ch and ch.count("MARÍA") == 2, ch)
+    check("y en la mención marcada de la acción", "MARÍA espera" in p.evaluate("lines()[1].text"), p.evaluate("lines()[1].text"))
     # fusionar
     # rename lugar
     p.click('#panel nav button[data-t=lug]')
@@ -94,7 +97,7 @@ with sync_playwright() as pw:
     check("deshacer renombrado de lugar", p.evaluate("lines()[0].text") == "INT. COCINA - NOCHE", p.evaluate("lines()[0].text"))
     p.keyboard.press("Control+z")
     ch = p.evaluate("lines().filter(l=>l.type=='character').map(l=>l.text)")
-    check("deshacer renombrado de personaje", "ANA" in ch and "MARÍA" not in ch, ch)
+    check("deshacer renombrado de personaje", "ANA" in ch and "MARÍA" not in ch and "ANA espera" in p.evaluate("lines()[1].text"), ch)
     p.keyboard.press("Control+y")
     ch = p.evaluate("lines().filter(l=>l.type=='character').map(l=>l.text)")
     check("rehacer", "MARÍA" in ch, ch)
@@ -162,6 +165,32 @@ with sync_playwright() as pw:
     check("sin coincidencia no se propone nada", ghost() == "")
     g.keyboard.press("Enter")
     check("nombre nuevo se queda tal cual", texts(g)[-2] == "marx" and "MARX" in g.evaluate("[...analyze().chars.keys()]"), texts(g))
+
+    # 7b. renombrar con menciones en el texto
+    g.evaluate("""load('x','cine',[['character','LUZ'],['dialogue','Luz, ven.'],['action','LUZ entra. Luz apaga la luz. LUZMARÍA mira.'],
+      ['character','LUZ'],['paren','mira a Luz'],['dialogue','b'],['character','PEPE'],['dialogue','c']])""")
+    g.wait_for_timeout(500)
+    g.click('#panel nav button[data-t=per]')
+    def ren(k, nw):
+        g.click(f"#lPer li[data-k={k}] button[data-r]")
+        g.keyboard.press("Control+A"); g.keyboard.type(nw); g.keyboard.press("Enter")
+    before = texts(g)
+    ren("LUZ", "Sol")
+    ms = g.evaluate("[...document.querySelectorAll('#mlist input')].map(c=>c.checked)")
+    check("menciones: palabra completa, en acción y paréntesis, no en diálogo", ms == [True, True, False, True], ms)
+    g.keyboard.press("Escape"); g.wait_for_timeout(100)
+    check("Esc en la vista previa no cambia nada", texts(g) == before, texts(g))
+    ren("LUZ", "Sol")
+    g.click("#ment button[value=ok]"); g.wait_for_timeout(100)
+    t = texts(g)
+    check("cambia las marcadas respetando mayúsculas", t[2] == "SOL entra. Sol apaga la luz. LUZMARÍA mira." and t[4] == "(mira a Sol)" and t[1] == "Luz, ven." and t[0] == "SOL", t)
+    g.click("#ed > div:first-child"); g.keyboard.press("Control+z")
+    check("un solo deshacer lo devuelve todo", texts(g) == before, texts(g))
+    g.wait_for_timeout(500)
+    ren("PEPE", "Juan")
+    check("sin menciones no hay vista previa", not g.evaluate("$('ment').open") and texts(g)[6] == "JUAN", texts(g))
+    ac = g.evaluate("load('x','cine',[['character','ÁNGEL'],['action','Llega ángel.']]),mentions('ÁNGEL').length")
+    check("menciones sin distinguir mayúsculas con tilde", ac == 1, ac)
 
     # 8. selector de tema
     theme = lambda: g.evaluate("document.documentElement.dataset.theme||''")
