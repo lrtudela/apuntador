@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Apuntador · editor de cine y teatro</title>
+<style>
+:root{--bg:#0a0d0a;--paper:#0f150f;--fg:#c9f7c0;--dim:#6e9a68;--acc:#ffd23f;--ln:#2f452f}
+[data-theme=papel]{--bg:#d9d5c9;--paper:#fffef8;--fg:#1b1b1b;--dim:#5f5b50;--acc:#b3261e;--ln:#b0ac9f}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;height:100dvh;background:var(--bg);color:var(--fg);font:16px/1.4 "Courier New",Courier,monospace}
+button,select,input,summary{font:inherit;color:inherit;background:var(--paper);border:2px solid var(--ln);padding:.3rem .6rem;min-height:42px;border-radius:0}
+button,summary{cursor:pointer}
+button:hover,button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{border-color:var(--acc);outline:none}
+header{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border-bottom:2px solid var(--ln);background:var(--paper)}
+#title{flex:1 1 140px;min-width:0;font-weight:700}
+#stat{color:var(--dim);font-size:.85rem}
+details{position:relative}
+summary{list-style:none;display:flex;align-items:center}
+summary::-webkit-details-marker{display:none}
+details>div{position:absolute;right:0;top:100%;z-index:9;display:flex;flex-direction:column;gap:2px;padding:4px;background:var(--paper);border:2px solid var(--acc);min-width:210px}
+details>div button{text-align:left}
+#main{flex:1;display:flex;min-height:0;position:relative}
+#panel{position:absolute;inset:0 auto 0 0;width:min(86vw,320px);background:var(--paper);border-right:2px solid var(--ln);transform:translateX(-100%);transition:transform .15s;z-index:5;overflow:auto;padding:8px}
+#panel.open{transform:none}
+#panel nav{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+#panel nav button.on{border-color:var(--acc);color:var(--acc)}
+#panel ul{list-style:none;margin:0;padding:0}
+#panel li{display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid var(--ln);cursor:pointer}
+#panel li:hover{background:var(--bg)}
+#panel li span{flex:1;overflow:hidden;text-overflow:ellipsis}
+#panel li.act{color:var(--acc);font-weight:700}
+#panel li b{color:var(--dim);font-weight:400}
+#panel li input{flex:1;min-width:0}
+#panel p{color:var(--dim);font-size:.9rem}
+@media(min-width:900px){#panel{position:static;transform:none;width:300px;flex:none}#bpanel{display:none}}
+#wrap{flex:1;overflow:auto;padding:16px}
+#ptitle{display:none}
+#ed{max-width:62ch;margin:0 auto;padding:8px 0 50vh;outline:none;caret-color:var(--acc);white-space:pre-wrap;overflow-wrap:anywhere}
+#ed>div{margin-top:1em;min-height:1.4em}
+#ed>div.cur{background:color-mix(in srgb,var(--acc) 9%,transparent)}
+#ed>[data-type=heading]{font-weight:700;text-transform:uppercase;margin-top:1.8em}
+#ed>[data-type=character]{margin-left:38%;text-transform:uppercase}
+#ed>[data-type=paren]{margin-left:28%;margin-right:20%;margin-top:0}
+#ed>[data-type=dialogue]{margin-left:17%;margin-right:17%;margin-top:0}
+#ed>[data-type=transition]{text-align:right;text-transform:uppercase}
+#ed>[data-type=act]{text-align:center;font-weight:700;text-transform:uppercase;margin-top:2.5em}
+#ed>[data-type=stage]{font-style:italic;margin-left:30%}
+#ed[data-mode=teatro]>[data-type=character]{margin-left:22%}
+#ed[data-mode=teatro]>[data-type=paren]{margin-left:22%;margin-right:10%}
+#ed[data-mode=teatro]>[data-type=dialogue]{margin-left:22%;margin-right:6%}
+footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px solid var(--ln);background:var(--paper)}
+#sug{display:flex;gap:4px;overflow-x:auto;flex:1}
+#sug button{white-space:nowrap;color:var(--acc)}
+@media(max-width:480px){#ed>[data-type=character]{margin-left:30%}#ed>[data-type=dialogue]{margin-left:8%;margin-right:8%}#ed>[data-type=paren]{margin-left:20%}#ed[data-mode=teatro]>[data-type=character],#ed[data-mode=teatro]>[data-type=dialogue],#ed[data-mode=teatro]>[data-type=paren]{margin-left:12%}}
+@media print{
+ @page{size:A4;margin:2.5cm}
+ html,body{height:auto}
+ body{display:block;background:#fff;color:#000}
+ header,footer,#panel{display:none!important}
+ #main{display:block}
+ #wrap{overflow:visible;padding:0}
+ #ptitle{display:block;text-align:center;font-size:1.3rem;margin:0 0 3em}
+ #ed{max-width:none;padding:0}
+ #ed>div{break-inside:avoid;background:none!important}
+ #ed>[data-type=heading],#ed>[data-type=character],#ed>[data-type=act]{break-after:avoid}
+}
+</style>
+</head>
+<body>
+<header>
+ <button id="bpanel" aria-label="Abrir panel">☰</button>
+ <input id="title" aria-label="Título" value="Sin título">
+ <select id="mode" aria-label="Formato"><option value="cine">Cine</option><option value="teatro">Teatro</option></select>
+ <details id="menu"><summary>Archivo ▾</summary><div>
+  <button data-act="new">Nuevo</button>
+  <button data-act="open">Abrir (.json / .fountain)</button>
+  <button data-act="json">Guardar .json</button>
+  <button data-act="fountain">Exportar .fountain</button>
+  <button data-act="print">Imprimir / PDF</button>
+  <button data-act="theme">Cambiar tema</button>
+ </div></details>
+ <span id="stat"></span>
+</header>
+<div id="main">
+ <aside id="panel" data-t="esc">
+  <nav>
+   <button data-t="esc" class="on">Escenas</button>
+   <button data-t="per">Personajes</button>
+   <button data-t="lug">Lugares</button>
+   <button data-t="ayu">?</button>
+  </nav>
+  <section data-s="esc"><ul id="lEsc"></ul></section>
+  <section data-s="per" hidden><ul id="lPer"></ul></section>
+  <section data-s="lug" hidden><ul id="lLug"></ul></section>
+  <section data-s="ayu" hidden>
+   <p><b>APUNTADOR</b> · editor de guion para cine y teatro<br><br>
+   <b>Tab</b> / <b>Mayús+Tab</b>: cambia el tipo de línea.<br>
+   <b>Enter</b>: nueva línea con el tipo siguiente.<br>
+   <b>Mayús+Enter</b>: nueva línea del mismo tipo (versos).<br>
+   <b>Ctrl+Espacio</b>: autocompleta personaje o lugar.<br>
+   <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
+   Pulsa ✎ junto a un personaje o lugar para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan.</p>
+  </section>
+ </aside>
+ <div id="wrap">
+  <h1 id="ptitle"></h1>
+  <div id="ed" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Guion"></div>
+ </div>
+</div>
+<footer>
+ <select id="tipo" aria-label="Tipo de línea"></select>
+ <button id="cyc" aria-label="Siguiente tipo">⇥</button>
+ <div id="sug"></div>
+</footer>
+<input type="file" id="fileIn" hidden accept=".json,.fountain,.txt">
+<script>
+const $=id=>document.getElementById(id);
+const ED=$('ed'),TI=$('title'),MO=$('mode'),TIPO=$('tipo'),SUG=$('sug'),PAN=$('panel');
+const LABEL={action:'Acción',heading:'Escena',character:'Personaje',paren:'Paréntesis',dialogue:'Diálogo',transition:'Transición',stage:'Acotación',act:'Acto'};
+const CYC={cine:['action','character','dialogue','paren','heading','transition'],teatro:['stage','character','dialogue','paren','heading','act']};
+const NEXT={
+ cine:{action:'action',heading:'action',character:'dialogue',paren:'dialogue',dialogue:'action',transition:'heading'},
+ teatro:{stage:'character',act:'heading',heading:'stage',character:'dialogue',paren:'dialogue',dialogue:'character'}};
+const HEAD=/^(INT\.?\/EXT|I\/E|INT|EXT)\.?\s+/i;
+const DEMO=[['heading','INT. COCINA - NOCHE'],['action','Una luz tenue sobre la mesa. ANA espera con el móvil en la mano.'],['character','ANA'],['dialogue','Dijo que vendría antes de las doce.'],['character','LUIS'],['paren','sin mirarla'],['dialogue','Siempre dice lo mismo.']];
+let M='cine',last=null,tm,hist=[],pos=-1;
+
+const h=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const unparen=s=>s.replace(/^\(+|\)+$/g,'');
+const key=t=>t.replace(/\s*\(.*\)\s*$/,'').trim().toUpperCase();
+const defType=()=>M==='cine'?'action':'stage';
+function conv(t,m){
+ if(m==='cine')return ({stage:'action',act:'action'})[t]||t;
+ return ({action:'stage',transition:'stage'})[t]||t}
+function parseHead(t){
+ let pre='',r=t.trim();const m=r.match(HEAD);
+ if(m){pre=m[1].toUpperCase()+'. ';r=r.slice(m[0].length)}
+ const k=r.lastIndexOf(' - ');let loc=r,time='';
+ if(k>=0){loc=r.slice(0,k);time=r.slice(k+3)}
+ return{pre,loc:loc.trim(),time:time.trim()}}
+const buildHead=o=>o.pre+o.loc+(o.time?' - '+o.time:'');
+
+/* ---------- DOM de líneas ---------- */
+function fix(d){if(!d.textContent&&!d.querySelector('br'))d.innerHTML='<br>'}
+function set(d,t){d.textContent=t;fix(d)}
+function mk(type,text){
+ if(!LABEL[type])type='action';
+ const d=document.createElement('div');d.dataset.type=type;
+ if(type==='paren')text='('+unparen(text)+')';
+ set(d,text);return d}
+function caret(d,o){
+ const s=getSelection(),r=document.createRange(),n=d.firstChild;
+ if(n&&n.nodeType===3)r.setStart(n,Math.min(o,n.length));else r.setStart(d,0);
+ r.collapse(true);s.removeAllRanges();s.addRange(r)}
+function cur(){
+ const s=getSelection();let n=s.anchorNode;
+ if(!n||n===ED||!ED.contains(n))return null;
+ while(n&&n.parentNode!==ED)n=n.parentNode;
+ return n&&n.nodeName==='DIV'?n:null}
+const lines=skip=>[...ED.children].filter(d=>d!==skip).map(d=>({type:d.dataset.type,text:d.textContent.replace(/ /g,' ')}));
+function norm(){
+ if(!ED.firstChild||[...ED.childNodes].some(n=>n.nodeName!=='DIV')){
+  const t=ED.textContent;ED.replaceChildren(mk(defType(),t));caret(ED.firstChild,9e9)}
+ ED.querySelectorAll(':scope>div:not([data-type])').forEach(d=>d.dataset.type=defType())}
+function setType(d,t){
+ const was=d.dataset.type;d.dataset.type=t;
+ if(t==='paren'&&was!=='paren'){const s=unparen(d.textContent);set(d,'('+s+')');caret(d,1+s.length)}
+ else if(was==='paren'&&t!=='paren'){set(d,unparen(d.textContent));caret(d,9e9)}
+ TIPO.value=t}
+function cycle(d,dir){
+ const L=CYC[M];let i=L.indexOf(d.dataset.type);
+ i=i<0?0:(i+dir+L.length)%L.length;setType(d,L[i]);changed()}
+function enter(d,same){
+ const s=getSelection();let r=s.getRangeAt(0);
+ if(d.dataset.type==='paren'){
+  const nd=mk(same?'paren':NEXT[M].paren,'');d.after(nd);caret(nd,same?1:0);changed();return}
+ if(!r.collapsed){r.deleteContents();r=s.getRangeAt(0)}
+ const t=document.createRange();t.selectNodeContents(d);t.setStart(r.endContainer,r.endOffset);
+ const tail=t.toString();t.deleteContents();fix(d);
+ if(!d.textContent&&tail){set(d,tail);d.before(mk(d.dataset.type,''));caret(d,0);changed();return}
+ const nd=mk(same?d.dataset.type:NEXT[M][d.dataset.type]||defType(),tail);
+ d.after(nd);caret(nd,0);nd.scrollIntoView({block:'nearest'});changed()}
+
+/* ---------- análisis ---------- */
+function analyze(skip){
+ const chars=new Map,locs=new Map,scenes=[];let c=null,n=0;
+ lines(skip).forEach((l,i)=>{
+  if(l.type==='character'){c=key(l.text);if(c&&!chars.has(c))chars.set(c,{n:0,first:i})}
+  else if(l.type==='dialogue'&&c)chars.get(c).n++;
+  else if(l.type!=='paren')c=null;
+  if(l.type==='heading'){
+   const k=parseHead(l.text).loc.toUpperCase();
+   if(k){const o=locs.get(k)||{n:0,first:i};o.n++;locs.set(k,o)}
+   scenes.push({i,label:++n+'. '+l.text})}
+  if(l.type==='act')scenes.push({i,label:l.text,act:1})});
+ return{chars,locs,scenes}}
+function renderPanels(){
+ const a=document.activeElement;
+ if(PAN.contains(a)&&a.tagName==='INPUT')return;
+ const A=analyze();
+ $('lEsc').innerHTML=A.scenes.map(s=>`<li data-i="${s.i}"${s.act?' class="act"':''}><span>${h(s.label)}</span></li>`).join('')||'<p>Sin escenas todavía.</p>';
+ const row=([k,v])=>`<li data-i="${v.first}" data-k="${h(k)}"><span>${h(k)}</span><b>${v.n||''}</b><button data-r aria-label="Renombrar ${h(k)}">✎</button></li>`;
+ $('lPer').innerHTML=[...A.chars].sort((a,b)=>b[1].n-a[1].n).map(row).join('')||'<p>Sin personajes todavía.</p>';
+ $('lLug').innerHTML=[...A.locs].map(row).join('')||'<p>Sin lugares todavía.</p>';
+ $('stat').textContent=(ED.textContent.split(/\s+/).filter(Boolean).length)+' pal.'}
+function rename(kind,old,nw){
+ nw=nw.trim().toUpperCase();if(!nw||nw===old)return;
+ commit();
+ [...ED.children].forEach(d=>{
+  const t=d.textContent,ty=d.dataset.type;
+  if(kind==='per'&&ty==='character'&&key(t)===old)set(d,nw+((t.match(/\s*\(.*\)\s*$/)||[''])[0]));
+  if(kind==='lug'&&ty==='heading'){const o=parseHead(t);if(o.loc.toUpperCase()===old){o.loc=nw;set(d,buildHead(o))}}});
+ commit()}
+PAN.addEventListener('click',ev=>{
+ const t=ev.target;
+ if(t.dataset.t){PAN.dataset.t=t.dataset.t;PAN.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b===t));PAN.querySelectorAll('section').forEach(s=>s.hidden=s.dataset.s!==t.dataset.t);return}
+ const li=t.closest('li');if(!li)return;
+ if(t.dataset.r!==undefined){
+  const k=li.dataset.k;li.dataset.edit=1;
+  li.innerHTML=`<input value="${h(k)}" aria-label="Nuevo nombre"><button data-ok>OK</button>`;
+  const i=li.querySelector('input');i.focus();i.select();return}
+ if(t.dataset.ok!==undefined){doRename(li);return}
+ if(t.tagName==='INPUT')return;
+ goto(+li.dataset.i)});
+PAN.addEventListener('keydown',ev=>{
+ if(ev.target.tagName!=='INPUT')return;
+ if(ev.key==='Enter')doRename(ev.target.closest('li'));
+ if(ev.key==='Escape'){ev.target.blur();renderPanels()}});
+function doRename(li){
+ const kind=li.parentNode.id==='lPer'?'per':'lug',nw=li.querySelector('input').value;
+ li.querySelector('input').blur();rename(kind,li.dataset.k,nw);renderPanels()}
+function goto(i){
+ const d=ED.children[i];if(!d)return;
+ ED.focus();caret(d,0);d.scrollIntoView({block:'center'});
+ if(innerWidth<900)PAN.classList.remove('open')}
+$('bpanel').onclick=()=>PAN.classList.toggle('open');
+
+/* ---------- autocompletar ---------- */
+function sugg(){
+ SUG.innerHTML='';const d=cur();if(!d)return;
+ const t=d.dataset.type;let q,list,fn;
+ if(t!=='character'&&t!=='heading')return;
+ const A=analyze(d);
+ if(t==='character'){q=key(d.textContent);list=[...A.chars.keys()];fn=n=>n}
+ else{const o=parseHead(d.textContent);q=o.loc.toUpperCase();list=[...A.locs.keys()];fn=n=>buildHead({...o,loc:n})}
+ list.filter(n=>q&&n!==q&&n.startsWith(q)).slice(0,6).forEach(n=>{
+  const b=document.createElement('button');b.textContent=n;b.dataset.v=fn(n);SUG.append(b)})}
+function applySug(v){const d=cur();if(!d)return;set(d,v);caret(d,9e9);changed();sugg()}
+SUG.addEventListener('pointerdown',ev=>{if(ev.target.dataset.v){ev.preventDefault();applySug(ev.target.dataset.v)}});
+
+/* ---------- historial y guardado ---------- */
+function snap(){
+ const k=JSON.stringify([TI.value,M,lines().map(x=>[x.type,x.text])]);
+ if(hist[pos]&&hist[pos].k===k)return;
+ const d=cur();let i=-1,o=0;
+ if(d){i=[...ED.children].indexOf(d);const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setEnd(s.anchorNode,s.anchorOffset);o=r.toString().length}
+ hist=hist.slice(0,pos+1);hist.push({k,i,o});pos++;
+ if(hist.length>300){hist.shift();pos--}}
+function save(){try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:lines().map(x=>[x.type,x.text])}))}catch(_){}}
+function commit(){clearTimeout(tm);norm();snap();save();renderPanels()}
+function changed(){clearTimeout(tm);tm=setTimeout(commit,400)}
+function load(t,m,L){
+ M=m;TI.value=t;MO.value=m;ED.dataset.mode=m;
+ ED.replaceChildren(...L.map(([ty,tx])=>mk(conv(ty,m),String(tx).replace(/\n/g,' '))));
+ if(!ED.children.length)ED.append(mk(defType(),''));
+ TIPO.innerHTML=CYC[m].map(t=>`<option value="${t}">${LABEL[t]}</option>`).join('');
+ renderPanels()}
+function restore(e){
+ const[t,m,L]=JSON.parse(e.k);load(t,m,L);save();
+ ED.focus();const d=ED.children[e.i];if(d)caret(d,e.o)}
+function undo(){commit();if(pos>0)restore(hist[--pos])}
+function redo(){if(pos<hist.length-1)restore(hist[++pos])}
+
+/* ---------- eventos del editor ---------- */
+ED.addEventListener('keydown',ev=>{
+ const mod=ev.ctrlKey||ev.metaKey,k=ev.key.toLowerCase();
+ if(mod&&k==='z'){ev.preventDefault();ev.shiftKey?redo():undo();return}
+ if(mod&&k==='y'){ev.preventDefault();redo();return}
+ const d=cur();if(!d)return;
+ if(mod&&ev.code==='Space'){ev.preventDefault();const b=SUG.firstChild;if(b)applySug(b.dataset.v);return}
+ if(ev.key==='Tab'){ev.preventDefault();cycle(d,ev.shiftKey?-1:1);return}
+ if(ev.key==='Enter'){ev.preventDefault();enter(d,ev.shiftKey)}});
+ED.addEventListener('input',()=>{norm();changed()});
+ED.addEventListener('paste',ev=>{
+ ev.preventDefault();const d=cur();if(!d)return;
+ const p=ev.clipboardData.getData('text/plain').split(/\r?\n/);
+ document.execCommand('insertText',false,p[0]);
+ let at=d;p.slice(1).forEach(x=>{const nd=mk(d.dataset.type,x);at.after(nd);at=nd});
+ if(at!==d)caret(at,9e9);changed()});
+ED.addEventListener('drop',ev=>ev.preventDefault());
+document.addEventListener('selectionchange',()=>{
+ const d=cur();
+ ED.querySelectorAll('.cur').forEach(x=>x!==d&&x.classList.remove('cur'));
+ if(d){d.classList.add('cur');last=d;if(CYC[M].includes(d.dataset.type))TIPO.value=d.dataset.type;sugg()}});
+TIPO.onchange=()=>{if(!last||!last.isConnected)return;ED.focus();caret(last,9e9);setType(last,TIPO.value);changed()};
+$('cyc').addEventListener('pointerdown',ev=>{ev.preventDefault();if(last&&last.isConnected)cycle(last,1)});
+TI.addEventListener('input',changed);
+MO.onchange=()=>{
+ commit();M=MO.value;ED.dataset.mode=M;
+ [...ED.children].forEach(d=>d.dataset.type=conv(d.dataset.type,M));
+ TIPO.innerHTML=CYC[M].map(t=>`<option value="${t}">${LABEL[t]}</option>`).join('');
+ changed()};
+
+/* ---------- Fountain ---------- */
+function toFountain(){
+ let o=`Title: ${TI.value}\nMode: ${M}\n`,prev=null;
+ lines().forEach(l=>{
+  const t=l.text.trim();if(!t)return;let s;
+  switch(l.type){
+   case'heading':s=HEAD.test(t)?t.toUpperCase():'.'+t.toUpperCase();break;
+   case'character':s=t.toUpperCase();break;
+   case'paren':s='('+unparen(t)+')';break;
+   case'dialogue':s=t;break;
+   case'transition':s=t.toUpperCase();if(!/TO:$/.test(s))s='> '+s;break;
+   case'act':s='# '+t;break;
+   default:s=(t===t.toUpperCase()&&/\p{L}/u.test(t))?'!'+t:t}
+  const cont=(l.type==='paren'||l.type==='dialogue')&&(prev==='character'||prev==='paren'||prev==='dialogue');
+  o+=(cont?'':'\n')+s+'\n';prev=l.type});
+ return o}
+function parseFountain(src){
+ src=src.replace(/\r/g,'').replace(/\/\*[\s\S]*?\*\//g,'').replace(/\[\[[\s\S]*?\]\]/g,'');
+ const R=src.split('\n'),meta={},out=[];let i=0;
+ const KEY=/^(Title|Credit|Author|Authors|Source|Draft date|Date|Contact|Copyright|Notes|Mode)\s*:\s*(.*)/i;
+ if(KEY.test(R[0]||'')){for(;i<R.length&&R[i].trim();i++){const m=R[i].match(KEY);if(m)meta[m[1].toLowerCase()]=m[2]}}
+ const teatro=(meta.mode||'').toLowerCase()==='teatro';
+ let blank=true,dlg=false;
+ for(;i<R.length;i++){
+  const t=R[i].trim();
+  if(!t){blank=true;dlg=false;continue}
+  const nextBlank=!(R[i+1]||'').trim();
+  if(dlg){out.push(/^\(.*\)$/.test(t)?['paren',unparen(t)]:['dialogue',t]);blank=false;continue}
+  if(t[0]==='#'){if(teatro)out.push(['act',t.replace(/^#+\s*/,'')])}
+  else if(t[0]==='=');
+  else if(/^\.(?!\.)/.test(t)||HEAD.test(t))out.push(['heading',t.replace(/^\./,'').replace(/\s*#[^#]+#\s*$/,'')]);
+  else if(t[0]==='>'&&t.slice(-1)!=='<')out.push(['transition',t.slice(1).trim()]);
+  else if(blank&&nextBlank&&/^[^a-z]*TO:$/.test(t))out.push(['transition',t]);
+  else if(blank&&!nextBlank&&(t[0]==='@'||(t===t.toUpperCase()&&/\p{L}/u.test(t)&&t[0]!=='!'))){out.push(['character',t.replace(/^@/,'').replace(/\s*\^$/,'')]);dlg=true}
+  else out.push([teatro?'stage':'action',t.replace(/^!/,'')]);
+  blank=false}
+ return{t:meta.title||'Sin título',m:teatro?'teatro':'cine',l:out}}
+
+/* ---------- menú Archivo ---------- */
+function dl(name,text,type){
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();
+ setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+const slug=()=>(TI.value||'guion').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'guion';
+function setTheme(p){
+ if(p)document.documentElement.dataset.theme='papel';else delete document.documentElement.dataset.theme;
+ try{localStorage.setItem('guion:theme',p?'papel':'')}catch(_){}}
+$('menu').addEventListener('click',ev=>{
+ const a=ev.target.dataset.act;if(!a)return;
+ $('menu').open=false;
+ if(a==='new'){if(confirm('¿Empezar un guion nuevo? Puedes recuperar el actual con Ctrl+Z.')){commit();load('Sin título',M,[]);commit()}}
+ if(a==='open')$('fileIn').click();
+ if(a==='json')dl(slug()+'.apuntador.json',JSON.stringify({v:1,t:TI.value,m:M,l:lines().map(x=>[x.type,x.text])}),'application/json');
+ if(a==='fountain')dl(slug()+'.fountain',toFountain(),'text/plain');
+ if(a==='print')print();
+ if(a==='theme')setTheme(!document.documentElement.dataset.theme)});
+$('fileIn').addEventListener('change',async ev=>{
+ const f=ev.target.files[0];ev.target.value='';if(!f)return;
+ const txt=await f.text();let d;
+ try{d=/\.json$/i.test(f.name)?JSON.parse(txt):parseFountain(txt)}catch(_){alert('No se pudo leer el archivo.');return}
+ commit();load(d.t||'Sin título',d.m==='teatro'?'teatro':'cine',d.l||[]);commit()});
+addEventListener('beforeprint',()=>{$('ptitle').textContent=TI.value});
+
+/* ---------- arranque ---------- */
+try{setTheme(localStorage.getItem('guion:theme')==='papel')}catch(_){}
+(function(){
+ let d={t:'Sin título',m:'cine',l:DEMO};
+ try{const s=JSON.parse(localStorage.getItem('guion:v1'));if(s&&Array.isArray(s.l))d=s}catch(_){}
+ load(d.t,d.m==='teatro'?'teatro':'cine',d.l);snap()})();
+</script>
+</body>
+</html>
