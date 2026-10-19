@@ -148,6 +148,15 @@ with sync_playwright() as pw:
     g.goto(URL)
     nt = [g.evaluate(f"load('x','{m}',[]),[...ED.children].map(d=>d.dataset.type).concat(TIPO.value)") for m in ("cine", "teatro")]
     check("documento nuevo empieza por escena y el selector lo muestra (cine y teatro)", nt == [["heading", "heading"], ["heading", "heading"]], nt)
+    for m in ("cine", "teatro"):
+        g.evaluate(f"load('x','{m}',[['action','a'],['character','ANA'],['dialogue','b']])")
+        g.click("#ed > div:nth-child(2)"); g.keyboard.press("Control+A"); g.keyboard.press("Backspace"); g.wait_for_timeout(50)
+        bl = g.evaluate("[...ED.children].map(d=>d.dataset.type).concat(TIPO.value)")
+        check(f"borrar todo deja una escena y el selector la muestra ({m})", bl == ["heading", "heading"], bl)
+    g.evaluate("load('x','cine',[['heading','A'],['character','ANA'],['dialogue','b']])")
+    g.click("#ed > div:nth-child(3)"); g.wait_for_timeout(50)  # selectionchange es asíncrono
+    g.select_option("#mode", "teatro")
+    check("cambiar de modo mantiene el tipo en el selector", g.input_value("#tipo") == "dialogue", g.input_value("#tipo"))
     g.evaluate("load('x','cine',[['character','MARÍA'],['dialogue','a'],['character','MARCOS'],['dialogue','b'],['character','']])")
     ghost = lambda: g.evaluate("ED.lastElementChild.dataset.ghost||''")
     g.click("#ed > div:last-child")

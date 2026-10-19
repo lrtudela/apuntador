@@ -227,7 +227,7 @@ function cur(){
 const lines=skip=>[...ED.children].filter(d=>d!==skip).map(d=>({type:d.dataset.type,text:d.textContent.replace(/ /g,' ')}));
 function norm(){
  if(!ED.firstChild||[...ED.childNodes].some(n=>n.nodeName!=='DIV')){
-  const t=ED.textContent;ED.replaceChildren(mk(defType(),t));caret(ED.firstChild,9e9)}
+  const t=ED.textContent;ED.replaceChildren(mk(t?defType():'heading',t));caret(ED.firstChild,9e9)}
  ED.querySelectorAll(':scope>div:not([data-type])').forEach(d=>d.dataset.type=defType())}
 function setType(d,t){
  const was=d.dataset.type;d.dataset.type=t;
@@ -401,7 +401,9 @@ ED.addEventListener('keydown',ev=>{
  if(ev.key==='Tab'){ev.preventDefault();cycle(d,ev.shiftKey?-1:1);return}
  if(ev.key==='Escape'&&d.dataset.ghost){esc=d;delete d.dataset.ghost;return}
  if(ev.key==='Enter'){ev.preventDefault();if(d.dataset.ghost&&!ev.shiftKey)applySug(SUG.firstChild.dataset.v);enter(d,ev.shiftKey)}});
-ED.addEventListener('input',()=>{esc=null;norm();changed();sugg()});
+// a script wiped to one empty line starts again with a scene heading
+let nb=0;ED.addEventListener('beforeinput',()=>nb=ED.children.length);
+ED.addEventListener('input',()=>{esc=null;norm();if(nb>1&&ED.children.length===1&&!ED.textContent)setType(ED.firstChild,'heading');changed();sugg()});
 ED.addEventListener('paste',ev=>{
  ev.preventDefault();const d=cur();if(!d)return;
  const p=ev.clipboardData.getData('text/plain').split(/\r?\n/);
@@ -420,6 +422,7 @@ MO.onchange=()=>{
  commit();M=MO.value;ED.dataset.mode=M;
  [...ED.children].forEach(d=>d.dataset.type=conv(d.dataset.type,M));
  TIPO.innerHTML=CYC[M].map(t=>`<option value="${t}">${LABEL[t]}</option>`).join('');
+ if(last&&last.isConnected)TIPO.value=last.dataset.type;
  changed()};
 
 /* ---------- Fountain ---------- */
