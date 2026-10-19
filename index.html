@@ -149,7 +149,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  <button id="cyc" aria-label="Siguiente tipo">⇥</button>
  <div id="sug"></div>
 </footer>
-<dialog id="cover" aria-labelledby="cvh"><form method="dialog">
+<dialog id="cover" aria-labelledby="cvh"><form method="dialog" novalidate>
  <h2 id="cvh">Portada</h2>
  <label>Título <input name="title"></label>
  <label>Crédito <input name="credit" placeholder="escrito por"></label>
@@ -157,7 +157,8 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  <label>Basado en <input name="source"></label>
  <label>Versión <input name="version"></label>
  <label>Fecha <input name="date"></label>
- <label>Contacto <textarea name="contact" rows="3"></textarea></label>
+ <label>Email <input name="email" type="email" autocomplete="email"></label>
+ <label>Teléfono <input name="phone" type="tel" autocomplete="tel"></label>
  <label>Registro / derechos <input name="copyright"></label>
  <label>Notas <textarea name="notes" rows="2"></textarea></label>
  <label class="chk"><input type="checkbox" name="on"> Imprimir portada</label>
@@ -340,7 +341,11 @@ function redo(){if(pos<hist.length-1)restore(hist[++pos])}
 /* ---------- portada (los datos viven en el formulario) ---------- */
 const CV=$('cover'),CF=CV.querySelector('form');let cvPrev;
 function getCover(){const o=Object.fromEntries(new FormData(CF));o.on=!!o.on;return o}
-function setCover(c){c=c||{};[...CF.elements].forEach(e=>{if(e.name)e.type==='checkbox'?e.checked=!!c[e.name]:e.value=c[e.name]||''})}
+function setCover(c){c=c||{};if(c.contact&&!c.email&&!c.phone)c={...c,...contactParts(c.contact)};[...CF.elements].forEach(e=>{if(e.name)e.type==='checkbox'?e.checked=!!c[e.name]:e.value=c[e.name]||''})}
+// old free-text contact (and Fountain Contact) -> email + phone; other lines are dropped
+function contactParts(s){
+ const L=String(s).split('\n').map(x=>x.trim());
+ return{email:L.find(x=>x.includes('@'))||'',phone:L.find(x=>/^\+?[\d\s().-]{6,}$/.test(x))||''}}
 function openCover(){
  cvPrev=getCover();if(!Object.values(cvPrev).some(Boolean))CF.elements.on.checked=true;
  CF.elements.title.placeholder=TI.value;CV.returnValue='';CV.showModal()}
@@ -348,7 +353,7 @@ CV.addEventListener('close',()=>{if(CV.returnValue==='ok')commit();else setCover
 function coverHTML(c){
  const line=(s,k)=>s?`<div${k?` class="${k}"`:''}>${h(s)}</div>`:'';
  return line(c.title||TI.value,'t')+(c.author?line(c.credit||'escrito por')+line(c.author):'')+line(c.source,'s')
-  +`<div class="b"><div>${h(c.contact)}</div><div>${h([c.version,c.date].filter(Boolean).join('\n'))}</div></div>`
+  +`<div class="b"><div>${h([c.email,c.phone].filter(Boolean).join('\n'))}</div><div>${h([c.version&&'Versión '+c.version,c.date].filter(Boolean).join('\n'))}</div></div>`
   +line([c.copyright,c.notes].filter(Boolean).join('\n'),'f')}
 
 /* ---------- eventos del editor ---------- */
@@ -384,7 +389,7 @@ MO.onchange=()=>{
 
 /* ---------- Fountain ---------- */
 function toFountain(){
- const c=getCover(),F=[['Title',c.title||TI.value],['Credit',c.credit],['Author',c.author],['Source',c.source],['Revision',c.version],['Draft date',c.date],['Contact',c.contact],['Copyright',c.copyright],['Notes',c.notes]];
+ const c=getCover(),F=[['Title',c.title||TI.value],['Credit',c.credit],['Author',c.author],['Source',c.source],['Revision',c.version],['Draft date',c.date],['Contact',[c.email,c.phone].filter(Boolean).join('\n')],['Copyright',c.copyright],['Notes',c.notes]];
  let o=F.filter(x=>x[1].trim()).map(([k,v])=>{const L=v.split('\n').filter(s=>s.trim());return L.length>1?k+':\n'+L.map(s=>'    '+s.trim()).join('\n')+'\n':k+': '+L[0].trim()+'\n'}).join('')+`Mode: ${M}\n`,prev=null;
  lines().forEach(l=>{
   const t=l.text.trim();if(!t)return;let s;
@@ -420,7 +425,7 @@ function parseFountain(src){
   else if(blank&&!nextBlank&&(t[0]==='@'||(t===t.toUpperCase()&&/\p{L}/u.test(t)&&t[0]!=='!'))){out.push(['character',t.replace(/^@/,'').replace(/\s*\^$/,'')]);dlg=true}
   else out.push([teatro?'stage':'action',t.replace(/^!/,'')]);
   blank=false}
- const c={credit:meta.credit,author:meta.author||meta.authors,source:meta.source,version:meta.revision,date:meta['draft date']||meta.date,contact:meta.contact,copyright:meta.copyright,notes:meta.notes};
+ const c={credit:meta.credit,author:meta.author||meta.authors,source:meta.source,version:meta.revision,date:meta['draft date']||meta.date,...contactParts(meta.contact||''),copyright:meta.copyright,notes:meta.notes};
  c.on=Object.values(c).some(Boolean);
  return{t:(meta.title||'Sin título').replace(/\n/g,' '),m:teatro?'teatro':'cine',l:out,c}}
 
