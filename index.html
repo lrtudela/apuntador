@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Apuntador · editor de cine y teatro</title>
+<title>INT. DÍA · editor de cine y teatro</title>
 <style>
 :root{--bg:#0a0d0a;--paper:#0f150f;--fg:#c9f7c0;--dim:#6e9a68;--acc:#ffd23f;--ln:#2f452f}
 [data-theme=papel]{--bg:#d9d5c9;--paper:#fffef8;--fg:#1b1b1b;--dim:#5f5b50;--acc:#b3261e;--ln:#b0ac9f}
@@ -129,7 +129,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   <section data-s="per" hidden><ul id="lPer"></ul></section>
   <section data-s="lug" hidden><ul id="lLug"></ul></section>
   <section data-s="ayu" hidden>
-   <p><b>APUNTADOR</b> · editor de guion para cine y teatro<br><br>
+   <p><b>INT. DÍA</b> · editor de guion para cine y teatro<br><br>
    <b>Tab</b> / <b>Mayús+Tab</b>: cambia el tipo de línea.<br>
    <b>Enter</b>: nueva línea con el tipo siguiente (tras personaje, diálogo; tras diálogo, personaje).<br>
    <b>Tab</b> en esa línea nueva: segunda opción (paréntesis tras personaje; acción o acotación tras diálogo).<br>
@@ -448,7 +448,7 @@ $('menu').addEventListener('click',ev=>{
  $('menu').open=false;
  if(a==='new'){if(confirm('¿Empezar un guion nuevo? Puedes recuperar el actual con Ctrl+Z.')){commit();load('Sin título',M,[]);commit()}}
  if(a==='open')$('fileIn').click();
- if(a==='json')dl(slug()+'.apuntador.json',JSON.stringify({v:1,t:TI.value,m:M,l:lines().map(x=>[x.type,x.text]),c:getCover()}),'application/json');
+ if(a==='json')dl(slug()+'.intdia.json',JSON.stringify({v:1,t:TI.value,m:M,l:lines().map(x=>[x.type,x.text]),c:getCover()}),'application/json');
  if(a==='fountain')dl(slug()+'.fountain',toFountain(),'text/plain');
  if(a==='cover')openCover();
  if(a==='print')print()});

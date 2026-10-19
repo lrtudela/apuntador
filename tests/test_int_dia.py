@@ -1,4 +1,4 @@
-"""Pruebas de Apuntador. Uso: python tests/test_apuntador.py"""
+"""Pruebas de INT. DÍA. Uso: python tests/test_int_dia.py"""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 import sys

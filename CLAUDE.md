@@ -1,11 +1,11 @@
-# Apuntador
+# INT. DÍA
 
 Editor web de guiones para cine y teatro, inspirado en Fade In. Proyecto de portfolio de Luis: cualquiera debe poder abrir la web y probarlo sin cuentas ni instalación. Se publica con GitHub Pages desde la rama `main`.
 
 ## Stack y estructura
 
 - Un único `index.html` con HTML, CSS y JS puros. Sin dependencias, sin build, sin framework. No añadas ninguna sin preguntar.
-- `tests/test_apuntador.py`: pruebas con Playwright en Chromium.
+- `tests/test_int_dia.py`: pruebas con Playwright en Chromium.
 - `docs/`: vault de Obsidian con los problemas conocidos, las mejoras y las decisiones pendientes (ver el final de este archivo). Es privado y está en `.gitignore`.
 - Interfaz en español; código (variables, funciones) en inglés.
 
@@ -34,7 +34,7 @@ Editor web de guiones para cine y teatro, inspirado en Fade In. Proyecto de port
 ```
 pip install playwright
 playwright install chromium
-python tests/test_apuntador.py
+python tests/test_int_dia.py
 ```
 
 Deben pasar todas y no haber errores de JS. Cubren: rotación de tipos con Tab, Enter por modo, autocompletado, renombrar personajes y lugares, ida y vuelta Fountain en cine y teatro, deshacer y rehacer, y 360 px sin scroll horizontal. Las pruebas llaman a funciones globales de `index.html` (`lines`, `analyze`, `toFountain`, `parseFountain`, `unparen`) y a los elementos `ED` y `SUG`. Si renombras alguno, actualiza también las pruebas.
