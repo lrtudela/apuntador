@@ -99,7 +99,8 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   <section data-s="ayu" hidden>
    <p><b>APUNTADOR</b> · editor de guion para cine y teatro<br><br>
    <b>Tab</b> / <b>Mayús+Tab</b>: cambia el tipo de línea.<br>
-   <b>Enter</b>: nueva línea con el tipo siguiente.<br>
+   <b>Enter</b>: nueva línea con el tipo siguiente (tras personaje, diálogo; tras diálogo, personaje).<br>
+   <b>Tab</b> en esa línea nueva: segunda opción (paréntesis tras personaje; acción o acotación tras diálogo).<br>
    <b>Mayús+Enter</b>: nueva línea del mismo tipo (versos).<br>
    <b>Ctrl+Espacio</b>: autocompleta personaje o lugar.<br>
    Al escribir un personaje se propone en gris el más cercano: <b>Enter</b> lo acepta, <b>Esc</b> lo descarta.<br>
@@ -124,11 +125,13 @@ const ED=$('ed'),TI=$('title'),MO=$('mode'),TIPO=$('tipo'),SUG=$('sug'),PAN=$('p
 const LABEL={action:'Acción',heading:'Escena',character:'Personaje',paren:'Paréntesis',dialogue:'Diálogo',transition:'Transición',stage:'Acotación',act:'Acto'};
 const CYC={cine:['action','character','dialogue','paren','heading','transition'],teatro:['stage','character','dialogue','paren','heading','act']};
 const NEXT={
- cine:{action:'action',heading:'action',character:'dialogue',paren:'dialogue',dialogue:'action',transition:'heading'},
+ cine:{action:'action',heading:'action',character:'dialogue',paren:'dialogue',dialogue:'character',transition:'heading'},
  teatro:{stage:'character',act:'heading',heading:'stage',character:'dialogue',paren:'dialogue',dialogue:'character'}};
+// second choice: first Tab on the empty line Enter just created
+const ALT={cine:{character:'paren',dialogue:'action'},teatro:{character:'paren',dialogue:'stage'}};
 const HEAD=/^(INT\.?\/EXT|I\/E|INT|EXT)\.?\s+/i;
 const DEMO=[['heading','INT. COCINA - NOCHE'],['action','Una luz tenue sobre la mesa. ANA espera con el móvil en la mano.'],['character','ANA'],['dialogue','Dijo que vendría antes de las doce.'],['character','LUIS'],['paren','sin mirarla'],['dialogue','Siempre dice lo mismo.']];
-let M='cine',last=null,tm,hist=[],pos=-1,esc=null;
+let M='cine',last=null,tm,hist=[],pos=-1,esc=null,fresh=null;
 
 const h=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unparen=s=>s.replace(/^\(+|\)+$/g,'');
@@ -173,7 +176,9 @@ function setType(d,t){
  else if(was==='paren'&&t!=='paren'){set(d,unparen(d.textContent));caret(d,9e9)}
  TIPO.value=t}
 function cycle(d,dir){
- const L=CYC[M];let i=L.indexOf(d.dataset.type);
+ const L=CYC[M],p=d.previousElementSibling,a=p&&ALT[M][p.dataset.type];let i=L.indexOf(d.dataset.type);
+ if(dir>0&&d===fresh&&a&&!d.textContent){fresh=null;setType(d,a);changed();return}
+ fresh=null;
  i=i<0?0:(i+dir+L.length)%L.length;setType(d,L[i]);changed()}
 function enter(d,same){
  const s=getSelection();let r=s.getRangeAt(0);
@@ -184,7 +189,7 @@ function enter(d,same){
  const tail=t.toString();t.deleteContents();fix(d);
  if(!d.textContent&&tail){set(d,tail);d.before(mk(d.dataset.type,''));caret(d,0);changed();return}
  const nd=mk(same?d.dataset.type:NEXT[M][d.dataset.type]||defType(),tail);
- d.after(nd);caret(nd,0);nd.scrollIntoView({block:'nearest'});changed()}
+ d.after(nd);caret(nd,0);nd.scrollIntoView({block:'nearest'});fresh=same?null:nd;changed()}
 
 /* ---------- análisis ---------- */
 function analyze(skip){
