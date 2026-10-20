@@ -66,20 +66,20 @@ details>div select{flex:1}
 #notes textarea:focus-visible{border-color:var(--acc);outline:none}
 #notes button{min-height:0;padding:0 .4rem;align-self:flex-start}
 @media screen and (min-width:1100px){#wrap[data-m=mg]{padding-right:272px}#wrap[data-m=mg] .nt{left:auto;width:240px}}
-#ptitle,#pcover{display:none}
+#ptitle,#pcover,#prole{display:none}
 dialog{width:min(34rem,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:12px;background:var(--paper);color:var(--fg);border:2px solid var(--acc)}
 dialog::backdrop{background:rgb(0 0 0/.6)}
 dialog h2{margin:0 0 8px;font-size:1.1rem;color:var(--acc)}
 dialog form{display:flex;flex-direction:column;gap:8px}
-#cover label{display:flex;flex-direction:column;gap:2px;color:var(--dim)}
+#cover label,#role label{display:flex;flex-direction:column;gap:2px;color:var(--dim)}
 #cover input,#cover textarea{background:var(--bg);color:var(--fg)}
 #cover textarea{font:inherit;border:2px solid var(--ln);padding:.3rem .6rem;resize:vertical}
 #cover textarea:focus-visible{border-color:var(--acc);outline:none}
-#cover .chk{flex-direction:row;align-items:center;color:var(--fg)}
-#cover .chk input{min-height:0;width:22px;height:22px;accent-color:var(--acc)}
+#cover .chk,#role .chk{flex-direction:row;align-items:center;color:var(--fg)}
+#cover .chk input,#role .chk input{min-height:0;width:22px;height:22px;accent-color:var(--acc)}
 dialog .act{display:flex;gap:6px}
 dialog .act button{flex:1}
-#ment p{margin:0;color:var(--dim)}
+#ment p,#role p{margin:0;color:var(--dim)}
 #ment ul{list-style:none;margin:0;padding:0;max-height:50dvh;overflow:auto}
 #ment label{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--ln);overflow-wrap:anywhere}
 #ment input{flex:none;width:22px;height:22px;margin:0;accent-color:var(--acc)}
@@ -123,8 +123,20 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  #notes{display:none}
  #ed>[data-ghost]::after{content:none}
  #ed>[data-type=heading],#ed>[data-type=character],#ed>[data-type=act]{break-after:avoid}
+ /* papel del actor: black and white, no backgrounds, room to mark it by hand */
+ [data-print=role] #wrap>:not(#prole){display:none!important}
+ [data-print=role] #prole{display:block;page:role;line-height:1.8;color:#000}
+ #prole h2{font-size:1.1rem;text-align:center;margin:1em 0 0}
+ #prole h3{font-size:1rem;margin:2em 0 .4em;break-after:avoid}
+ #prole .ex{break-inside:avoid;margin:1em 0}
+ #prole .who{text-transform:uppercase}
+ #prole p{margin:0}
+ #prole .me{font-weight:700;border-left:3pt solid #000;padding-left:1em}
+ #prole .cue{color:#3a3a3a;font-style:italic;font-size:.9em;margin-left:calc(1em + 3pt);break-after:avoid}
+ #prole .st{font-style:italic;margin-left:3em}
 }
 </style>
+<style id="roleCss"></style>
 </head>
 <body>
 <header>
@@ -138,6 +150,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   <button data-act="fountain">Exportar .fountain</button>
   <button data-act="cover">Portada</button>
   <button data-act="print">Imprimir / PDF</button>
+  <button data-act="role">Papel del actor</button>
   <label>Tema <select id="theme">
    <option value="">Verde terminal</option><option value="papel">Papel</option><option value="ambar">Ámbar</option><option value="sepia">Sepia nocturna</option><option value="azul">Azul noche</option><option value="salvia">Verde salvia</option><option value="vapor">Vaporwave</option>
   </select></label>
@@ -177,7 +190,8 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <b>Lugares</b>: dalos de alta en su pestaña. Con el cursor en una cabecera, elige allí su lugar; el texto de la cabecera no cambia. Pulsa un lugar para ir a sus escenas, una tras otra. ✎ cambia su nombre y ✕ lo borra (sus escenas se quedan sin lugar).<br><br>
    <b>Notas</b>: <b>Ctrl+Alt+M</b> (o «Nota en esta línea» en su pestaña) crea la nota de la línea del cursor o va a la que tiene; <b>Esc</b> vuelve al guion. Se ven en el margen derecho y nunca se imprimen. <b>Ctrl+Alt+N</b> salta a la siguiente línea con nota. Las líneas con nota llevan una marca a la izquierda, también con el margen cerrado, y arriba se ve cuántas notas hay. En pantallas estrechas no hay margen: pon el cursor en la línea para ver su nota debajo. Si borras una línea, su nota no se pierde: pasa a «Notas sueltas», desde donde la enganchas a la línea del cursor (⤶) o la borras (✕).<br>
    <b>Versiones</b>: en una nota, <b>+ versión</b> guarda una alternativa del texto de su línea (empieza siendo una copia, para que la edites). <b>⇄</b> la cambia por el texto de la línea, que pasa a ser una versión: no se pierde nada. Al exportar a Fountain, notas y versiones viajan como <code>[[nota: …]]</code> y <code>[[version: …]]</code>; las notas sueltas van al final.<br><br>
-   <b>Copia</b>: el guion se guarda solo en este navegador y se pierde si se borran sus datos. Arriba se ve cuándo hiciste la última copia en archivo (<b>Guardar .json</b> o <b>Exportar .fountain</b>): «Copia al día», «Copia: hace N días» si has cambiado algo desde entonces, o «Sin copia». Si pasan más de 7 días con cambios sin copiar, se resalta.</p>
+   <b>Copia</b>: el guion se guarda solo en este navegador y se pierde si se borran sus datos. Arriba se ve cuándo hiciste la última copia en archivo (<b>Guardar .json</b> o <b>Exportar .fountain</b>): «Copia al día», «Copia: hace N días» si has cambiado algo desde entonces, o «Sin copia». Si pasan más de 7 días con cambios sin copiar, se resalta.<br><br>
+   <b>Papel del actor</b> (Archivo › Papel del actor): elige un personaje y se imprimen solo sus intervenciones, cada una bajo su escena y con su <b>pie</b>: la última línea de diálogo de quien habla antes, entera. Lo del actor sale en negrita y con una barra a la izquierda; el pie, en gris y cursiva. Con <b>Exportar también acotaciones</b> salen también las acotaciones y los paréntesis pegados a su intervención y a la del pie, no las sueltas de la escena.</p>
   </section>
  </aside>
  <div id="wrap">
@@ -185,6 +199,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   <h1 id="ptitle"></h1>
   <div id="ed" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Guion"></div>
   <div id="notes" aria-label="Notas al margen"></div>
+  <div id="prole"></div>
  </div>
 </div>
 <footer>
@@ -212,6 +227,13 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  <p>Marca las menciones del texto que también deben cambiar. Los nombres de personaje cambian siempre.</p>
  <ul id="mlist"></ul>
  <div class="act"><button value="ok">Renombrar</button><button value="">Cancelar</button></div>
+</form></dialog>
+<dialog id="role" aria-labelledby="rlh"><form method="dialog">
+ <h2 id="rlh">Papel del actor</h2>
+ <p>Imprime solo las intervenciones del personaje, cada una con su pie: la última línea de diálogo de quien habla antes.</p>
+ <label>Personaje <select name="who"></select></label>
+ <label class="chk"><input type="checkbox" name="st"> Exportar también acotaciones</label>
+ <div class="act"><button value="ok">Imprimir</button><button value="">Cancelar</button></div>
 </form></dialog>
 <input type="file" id="fileIn" hidden accept=".json,.fountain,.txt">
 <script>
@@ -553,6 +575,48 @@ function coverHTML(c){
   +`<div class="b"><div>${h([c.email,c.phone].filter(Boolean).join('\n'))}</div><div>${h([c.version&&'Versión '+c.version,c.date].filter(Boolean).join('\n'))}</div></div>`
   +line([c.copyright,c.notes].filter(Boolean).join('\n'),'f')}
 
+/* ---------- papel del actor: sus intervenciones, cada una con su pie ---------- */
+// a speech is a character with its dialogue and paren lines; anything else ends it. st: also the stage lines touching
+// the actor's speech or the cue's (and the parens inside them)
+function roleHTML(k,st){
+ const S=[{U:[]}];let sp=null,act='';
+ lines().forEach((l,i)=>{l.i=i;const sc=S[S.length-1];
+  if(l.type==='act'){act=l.text.trim();sp=null}
+  else if(l.type==='heading'){S.push({h:l.text.trim()||'Escena '+S.length,act,U:[]});sp=null}
+  else if(l.type==='character')sc.U.push(sp={who:key(l.text),L:[]});
+  else if(sp&&(l.type==='dialogue'||l.type==='paren'))sp.L.push(l);
+  else{sp=null;if(['action','stage','paren'].includes(l.type)&&l.text.trim())sc.U.push({l})}});
+ const line=l=>l.type==='paren'?`<p class="pa">(${h(unparen(l.text))})</p>`:`<p>${h(l.text)}</p>`,seen=new Set,o=[];let pa='';
+ const speech=(c,u,L)=>`<div class="${c}"><div class="who">${h(u.who)}</div>${L.map(line).join('')}</div>`;
+ // loose lines of U between a and b (not included), once each
+ const loose=(U,a,b)=>{if(st)for(let x=a;x<b;x++){const l=U[x].l;if(l&&!seen.has(l.i)){seen.add(l.i);o.push(`<div class="st">(${h(unparen(l.text.trim()))})</div>`)}}};
+ S.forEach(sc=>{const U=sc.U;let head=false;
+  U.forEach((u,j)=>{if(u.who!==k)return;
+   if(!head){if(sc.act&&sc.act!==pa)o.push(`<h2>${h(pa=sc.act)}</h2>`);if(sc.h)o.push(`<h3>${h(sc.h)}</h3>`);head=true}
+   let p=j-1;while(p>=0&&!U[p].who)p--;
+   const P=p>=0&&U[p].who!==k?U[p]:null,D=P?P.L.map(l=>l.type).lastIndexOf('dialogue'):-1;
+   o.push('<div class="ex">');
+   if(P){let q=p-1;while(q>=0&&!U[q].who)q--;loose(U,q+1,p);
+    let a=D;while(st&&a>0&&P.L[a-1].type==='paren')a--;
+    if(D>=0)o.push(speech('cue',P,st?P.L.slice(a):[P.L[D]]))}
+   loose(U,p+1,j);
+   o.push(speech('me',u,st?u.L:u.L.filter(l=>l.type==='dialogue')));
+   let z=j+1;while(z<U.length&&!U[z].who)z++;loose(U,j+1,z);
+   o.push('</div>')})});
+ return o.join('')||`<p>${h(k)} no tiene intervenciones.</p>`}
+const RL=$('role'),RF=RL.querySelector('form');
+function openRole(){
+ const C=[...analyze().chars].sort((a,b)=>b[1].n-a[1].n),w=RF.elements.who,v=w.value;
+ w.innerHTML=C.map(([k,x])=>`<option value="${h(k)}">${h(k)} (${x.n})</option>`).join('')||'<option value="">(sin personajes)</option>';
+ if(C.some(([k])=>k===v))w.value=v;
+ RF.querySelector('[value=ok]').disabled=!C.length;RL.returnValue='';RL.showModal()}
+function printRole(k,st){
+ $('prole').innerHTML=roleHTML(k,st);
+ $('roleCss').textContent=`@page role{@top-left{content:"Papel de ${k.replace(/["\\]/g,'\\$&')}";font:12pt "Courier New",Courier,monospace}}`;
+ document.documentElement.dataset.print='role';print()}
+RL.addEventListener('close',()=>{if(RL.returnValue==='ok'&&RF.elements.who.value)printRole(RF.elements.who.value,RF.elements.st.checked)});
+addEventListener('afterprint',()=>delete document.documentElement.dataset.print);
+
 /* ---------- eventos del editor ---------- */
 ED.addEventListener('keydown',ev=>{
  if(ev.key==='Tab'&&free)return;// Esc then Tab leaves the editor (no keyboard trap)
@@ -673,6 +737,7 @@ $('menu').addEventListener('click',ev=>{
  if(a==='fountain')dl(slug()+'.fountain',toFountain(),'text/plain');
  if(a==='json'||a==='fountain'){commit();copyMark(true)}
  if(a==='cover')openCover();
+ if(a==='role')openRole();
  if(a==='print')print()});
 $('fileIn').addEventListener('change',async ev=>{
  const f=ev.target.files[0];ev.target.value='';if(!f)return;

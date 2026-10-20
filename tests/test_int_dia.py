@@ -590,6 +590,77 @@ with sync_playwright() as pw:
     check("copia sin localStorage: Sin copia", cpy(z)[0] == "Sin copia", cpy(z))
     act(z, "json")
     check("copia sin localStorage: tras Guardar .json, Copia al día", cpy(z)[0] == "Copia al día", cpy(z))
+
+    # 16. papel del actor
+    R = page()
+    OBRA = [["act", "Acto I"], ["heading", "ESCENA 1"], ["stage", "Un bar. Ruido de vasos."],
+            ["character", "CARLOS"], ["dialogue", "¿Estaréis mañana?"],
+            ["character", "PACO"], ["paren", "sin mirarle"], ["dialogue", "Claro que sí."],
+            ["character", "CARLOS"], ["dialogue", "Primer verso."], ["paren", "bebe"], ["dialogue", "No estaremos. Nos vamos a ir a comer."],
+            ["stage", "PACO se levanta."], ["character", "PACO"], ["dialogue", "Pues me voy."], ["stage", "Sale."],
+            ["character", "LOLA"], ["dialogue", "Qué raro."], ["stage", "Llueve fuera."], ["character", "CARLOS"], ["dialogue", "Ya."],
+            ["heading", "ESCENA 2"], ["character", "PACO"], ["dialogue", "Ya he vuelto."], ["stage", "Se sienta."],
+            ["character", "PACO"], ["dialogue", "Y otra vez."], ["character", "LOLA"], ["dialogue", "Hola."],
+            ["heading", "ESCENA 3"], ["character", "LOLA"], ["dialogue", "Sola."]]
+    R.evaluate("L=>{load('Obra','teatro',L);commit();window.printed=0;window.print=()=>printed++}", OBRA)
+    def role(k, st):  # the printed role as short strings: H act, # scene, < cue, > actor, ~ stage line
+        R.evaluate("([k,st])=>printRole(k,st)", [k, st])
+        return R.evaluate("""[...$('prole').querySelectorAll('h2,h3,.cue,.me,.st')].map(e=>({H2:'H ',H3:'# '}[e.tagName]||'')+
+            (e.matches('.st')?'~ '+e.textContent:e.matches('.cue,.me')?(e.matches('.cue')?'< ':'> ')+e.querySelector('.who').textContent+': '+[...e.querySelectorAll('p')].map(p=>p.textContent).join(' | '):e.textContent))""")
+    paco = ["H Acto I", "# ESCENA 1", "< CARLOS: ¿Estaréis mañana?", "> PACO: Claro que sí.",
+            "< CARLOS: No estaremos. Nos vamos a ir a comer.", "> PACO: Pues me voy.",
+            "# ESCENA 2", "> PACO: Ya he vuelto.", "> PACO: Y otra vez."]
+    got = role("PACO", False)
+    check("papel: sus intervenciones con su pie, en orden y bajo su escena", got == paco, got)
+    check("papel: el pie es la última línea de diálogo, entera", "< CARLOS: No estaremos. Nos vamos a ir a comer." in got and not any("Primer verso" in x for x in got), got)
+    check("papel: sin la casilla, ni acotaciones ni paréntesis", not any(x.startswith("~") or "(" in x for x in got), got)
+    check("papel: misma persona antes no pone pie; la primera de la escena va tras la cabecera", got[6:] == ["# ESCENA 2", "> PACO: Ya he vuelto.", "> PACO: Y otra vez."], got)
+    got = role("PACO", True)
+    check("papel con acotaciones: las pegadas al pie y al actor, y los paréntesis", got == ["H Acto I", "# ESCENA 1", "~ (Un bar. Ruido de vasos.)", "< CARLOS: ¿Estaréis mañana?",
+          "> PACO: (sin mirarle) | Claro que sí.", "< CARLOS: (bebe) | No estaremos. Nos vamos a ir a comer.", "~ (PACO se levanta.)",
+          "> PACO: Pues me voy.", "~ (Sale.)", "# ESCENA 2", "> PACO: Ya he vuelto.", "~ (Se sienta.)", "> PACO: Y otra vez."], got)
+    check("papel con acotaciones: no salen las ambientales sueltas", not any("Llueve" in x or "Hola" in x for x in got), got)
+    got = role("LOLA", False)
+    check("papel de otro personaje: sus pies y la escena donde empieza ella", got == ["H Acto I", "# ESCENA 1", "< PACO: Pues me voy.", "> LOLA: Qué raro.", "# ESCENA 2", "< PACO: Y otra vez.", "> LOLA: Hola.", "# ESCENA 3", "> LOLA: Sola."], got)
+    # menu and dialog
+    R.click("#menu summary"); R.click("#menu [data-act=role]")
+    opts = R.evaluate("[...$('role').querySelectorAll('option')].map(o=>o.textContent)")
+    check("papel: el diálogo lista los personajes con su recuento", sorted(opts) == sorted(["PACO (4)", "CARLOS (4)", "LOLA (3)"]), opts)
+    R.evaluate("printed=0"); R.select_option("#role select", "LOLA"); R.check("#role input[name=st]"); R.click("#role button[value=ok]")
+    R.wait_for_function("printed===1", polling=50, timeout=3000)
+    pr = R.evaluate("[printed,document.documentElement.dataset.print,$('prole').textContent.includes('Sola.')]")
+    check("papel: Imprimir imprime el papel elegido", pr == [1, "role", True], pr)
+    check("papel: «Papel de X» arriba en cada página", R.evaluate("$('roleCss').textContent").startswith('@page role{@top-left{content:"Papel de LOLA"'))
+    R.evaluate("setCover({on:true,title:'Portada'});ED.firstChild.dataset.note='1';NT.push({id:'1',text:'nota',from:'',versions:[]});renderNotes();dispatchEvent(new Event('beforeprint'))")
+    R.emulate_media(media="print")
+    vis = lambda: R.evaluate("['ed','notes','pcover','ptitle','prole'].map(i=>getComputedStyle($(i)).display)")
+    check("papel impreso: solo el papel, sin editor, notas ni portada", vis() == ["none", "none", "none", "none", "block"] and R.evaluate("getComputedStyle($('prole')).page") == "role", vis())
+    R.evaluate("dispatchEvent(new Event('afterprint'));dispatchEvent(new Event('beforeprint'))")
+    check("tras el papel, el guion se imprime igual que antes (con su portada)", vis() == ["block", "none", "flex", "none", "none"] and not R.evaluate("document.documentElement.dataset.print"), vis())
+    R.emulate_media(media="screen")
+    # two characters: each role tells at a glance what is the actor's and what is the cue, also in black and white
+    R.evaluate("load('Dos','teatro',[['heading','ESCENA 1'],['character','ANA'],['dialogue','Uno.'],['character','LUIS'],['dialogue','Dos.'],['character','ANA'],['dialogue','Tres.']]);commit()")
+    a, l = role("ANA", False), role("LUIS", False)
+    check("dos personajes: los dos papeles son distintos", a == ["# ESCENA 1", "> ANA: Uno.", "< LUIS: Dos.", "> ANA: Tres."] and l == ["# ESCENA 1", "< ANA: Uno.", "> LUIS: Dos."], [a, l])
+    R.emulate_media(media="print")
+    st = R.evaluate("""(()=>{const g=s=>getComputedStyle($('prole').querySelector(s));return{me:[g('.me').fontWeight,g('.me').borderLeftStyle,g('.me').borderLeftWidth,g('.me p').color,g('.me').borderLeftColor],
+        cue:[g('.cue').fontStyle,g('.cue p').color,g('.cue').fontWeight],bg:[...$('prole').querySelectorAll('*')].map(e=>getComputedStyle(e).backgroundColor).filter(c=>c!=='rgba(0, 0, 0, 0)')}})()""")
+    def lum(c):
+        v = [int(x) / 255 for x in c[c.index("(") + 1:c.index(")")].split(",")[:3]]
+        v = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in v]
+        return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]
+    ratio = 1.05 / (lum(st["cue"][1]) + 0.05)
+    check("papel: lo del actor en negrita, negro y con barra negra", st["me"][0] == "700" and st["me"][1] == "solid" and float(st["me"][2][:-2]) >= 3 and st["me"][3] == st["me"][4] == "rgb(0, 0, 0)", st)
+    check("papel: el pie en cursiva, sin negrita, gris oscuro con buen contraste", st["cue"][0] == "italic" and st["cue"][2] == "400" and st["cue"][1] != "rgb(0, 0, 0)" and ratio >= 7, [st, ratio])
+    check("papel: sin fondos de color en la impresión", st["bg"] == [], st)
+    R.emulate_media(media="screen")
+    R.evaluate("load('Cine','cine',[['heading','INT. BAR - NOCHE'],['action','Entra ANA.'],['character','ANA'],['dialogue','Hola.'],['character','LUIS'],['dialogue','Adiós.']]);commit()")
+    got = role("LUIS", True)
+    check("papel en cine: la acción pegada al pie sale con la casilla", got == ["# INT. BAR - NOCHE", "~ (Entra ANA.)", "< ANA: Hola.", "> LUIS: Adiós."], got)
+    R.evaluate("printed=0"); R.click("#menu summary"); R.click("#menu [data-act=role]"); R.keyboard.press("Escape")
+    check("papel: Esc cierra el diálogo sin imprimir", not R.evaluate("$('role').open") and R.evaluate("printed") == 0)
+    hp = R.evaluate("document.querySelector('[data-s=ayu]').textContent")
+    check("la ayuda explica el papel del actor", all(s in hp for s in ["Papel del actor", "pie", "Exportar también acotaciones", "pegados"]), hp)
     b.close()
 
 print("ERRORES JS:", errs)

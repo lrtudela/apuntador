@@ -14,6 +14,7 @@ Editor web de guiones para cine y teatro, inspirado en Fade In. Se abre en el na
 - **Deshacer y rehacer propios**, hasta 300 pasos, también en guiones de miles de líneas.
 - **Autoguardado** en el navegador, con aviso si falla y si otra pestaña cambia el guion.
 - **Portada e impresión a PDF** con numeración de páginas.
+- **Papel del actor.** Imprime solo las intervenciones de un personaje, cada una con su pie (la última línea de quien habla antes), y si quieres las acotaciones pegadas a ellas. Pensado para ensayar y legible en blanco y negro.
 - **Archivos:** guarda y abre `.intdia.json`, y exporta e importa Fountain para llevar el guion a otros programas.
 - **Siete temas** (verde terminal, papel, ámbar, sepia nocturna, azul noche, verde salvia y vaporwave) y funciona en el móvil.
 - **Accesible desde el teclado:** `Esc` y luego `Tab` saca el foco del editor.
