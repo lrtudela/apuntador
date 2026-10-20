@@ -55,7 +55,11 @@ details>div select{flex:1}
 @media(min-width:900px){#panel{position:static;transform:none;width:300px;flex:none}#bpanel{display:none}}
 #wrap{flex:1;overflow:auto;padding:16px;position:relative}
 #ed>[data-note]{box-shadow:-8px 0 0 -4px var(--acc)}
-#notes .nt{position:absolute;z-index:1;display:flex;gap:2px;left:16px;right:16px;background:var(--bg)}
+#notes .nt{position:absolute;z-index:1;display:flex;flex-direction:column;gap:2px;left:16px;right:16px;background:var(--bg)}
+#notes .nt>div>div,#notes .nt>div:first-child{display:flex;gap:2px}
+#notes .v textarea{border-style:dashed;border-left-color:var(--ln);min-height:1.8em}
+#notes .vf{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:.8rem;color:var(--dim)}
+#notes .vf button{min-height:28px;align-self:center}
 #notes .nt[hidden]{display:none}
 #notes textarea{flex:1;min-width:0;font:inherit;font-size:.85rem;color:inherit;background:var(--paper);border:2px solid var(--ln);border-left-color:var(--acc);padding:.3rem .5rem;resize:vertical;field-sizing:content;min-height:2.6em;max-height:40vh}
 #notes textarea:focus-visible{border-color:var(--acc);outline:none}
@@ -169,7 +173,8 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
    Pulsa ✎ junto a un personaje para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.<br><br>
    <b>Lugares</b>: dalos de alta en su pestaña. Con el cursor en una cabecera, elige allí su lugar; el texto de la cabecera no cambia. Pulsa un lugar para ir a sus escenas, una tras otra. ✎ cambia su nombre y ✕ lo borra (sus escenas se quedan sin lugar).<br><br>
-   <b>Notas</b>: <b>Ctrl+Alt+M</b> (o «Nota en esta línea» en su pestaña) crea la nota de la línea del cursor o va a la que tiene; <b>Esc</b> vuelve al guion. Se ven en el margen derecho y nunca se imprimen. <b>Ctrl+Alt+N</b> salta a la siguiente línea con nota. Las líneas con nota llevan una marca a la izquierda, también con el margen cerrado, y arriba se ve cuántas notas hay. En pantallas estrechas no hay margen: pon el cursor en la línea para ver su nota debajo. Si borras una línea, su nota no se pierde: pasa a «Notas sueltas», desde donde la enganchas a la línea del cursor (⤶) o la borras (✕).</p>
+   <b>Notas</b>: <b>Ctrl+Alt+M</b> (o «Nota en esta línea» en su pestaña) crea la nota de la línea del cursor o va a la que tiene; <b>Esc</b> vuelve al guion. Se ven en el margen derecho y nunca se imprimen. <b>Ctrl+Alt+N</b> salta a la siguiente línea con nota. Las líneas con nota llevan una marca a la izquierda, también con el margen cerrado, y arriba se ve cuántas notas hay. En pantallas estrechas no hay margen: pon el cursor en la línea para ver su nota debajo. Si borras una línea, su nota no se pierde: pasa a «Notas sueltas», desde donde la enganchas a la línea del cursor (⤶) o la borras (✕).<br>
+   <b>Versiones</b>: en una nota, <b>+ versión</b> guarda una alternativa del texto de su línea (empieza siendo una copia, para que la edites). <b>⇄</b> la cambia por el texto de la línea, que pasa a ser una versión: no se pierde nada. Al exportar a Fountain, notas y versiones viajan como <code>[[nota: …]]</code> y <code>[[version: …]]</code>; las notas sueltas van al final.</p>
   </section>
  </aside>
  <div id="wrap">
@@ -219,7 +224,8 @@ const ALT={cine:{character:'paren',dialogue:'action'},teatro:{character:'paren',
 const HEAD=/^(INT\.?\/EXT|I\/E|INT|EXT)\.?\s+/i;
 const DEMO=[['heading','INT. COCINA - NOCHE'],['action','Una luz tenue sobre la mesa. ANA espera con el móvil en la mano.'],['character','ANA'],['dialogue','Dijo que vendría antes de las doce.'],['character','LUIS'],['paren','sin mirarla'],['dialogue','Siempre dice lo mismo.']];
 let M='cine',last=null,tm=0,other=null,hist=[],pos=-1,esc=null,free=false,fresh=null,PL=[],jp={},NT=[],mgOn=true,raf=0;// PL: the author's places [{id,n}]; headings point to an id in data-place
-// NT: notes [{id,text,from}]; any line may point to one in data-note. A note outlives its line (loose); from = start of its last line
+// NT: notes [{id,text,from,versions}]; any line may point to one in data-note. A note outlives its line (loose); from = start of its last line;
+// versions = other texts for its line (without the brackets of a paren line)
 
 const h=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unparen=s=>s.replace(/^\(+|\)+$/g,'');
@@ -353,7 +359,7 @@ function noteFrom(){const m=new Map(NT.map(n=>[n.id,n])),seen=new Set;ED.querySe
 // creates the note of the cursor's line, or goes to the one it has
 function noteHere(d=last){
  if(!d||!d.isConnected)return;last=d;
- if(!NT.some(n=>n.id===d.dataset.note)){commit();d.dataset.note=String(NT.reduce((m,n)=>Math.max(m,+n.id||0),0)+1);NT.push({id:d.dataset.note,text:'',from:''});commit()}
+ if(!NT.some(n=>n.id===d.dataset.note)){commit();d.dataset.note=String(NT.reduce((m,n)=>Math.max(m,+n.id||0),0)+1);NT.push({id:d.dataset.note,text:'',from:'',versions:[]});commit()}
  if(wide()&&!mgOn)setMargin(true);
  if(innerWidth<900)PAN.classList.remove('open');
  layoutNotes();const e=$('notes').querySelector(`[data-id="${CSS.escape(d.dataset.note)}"] textarea`);if(e)e.focus()}
@@ -367,17 +373,32 @@ function nextNote(){
  const L=[...ED.querySelectorAll(':scope>[data-note]')],d=cur()||last;if(!L.length)return;
  const n=L.find(x=>d&&d.compareDocumentPosition(x)&Node.DOCUMENT_POSITION_FOLLOWING)||L[0];
  ED.focus();caret(n,0);n.scrollIntoView({block:'center'})}
+// versions: a swap exchanges the line's text with the chosen version, so no text is ever lost
+const content=d=>{const t=d.textContent.replace(/ /g,' ');return d.dataset.type==='paren'?unparen(t):t};
+const noteBy=id=>NT.find(n=>n.id===id);
+function addVersion(id){
+ const n=noteBy(id),d=lineOf(id);if(!n)return;
+ commit();n.versions.push(d?content(d):'');commit();layoutNotes();
+ const t=$('notes').querySelector(`[data-id="${CSS.escape(id)}"] .v:last-child textarea`);if(t){t.focus();t.select()}}
+function swapVersion(id,i){
+ const n=noteBy(id),d=lineOf(id);if(!n||!d||n.versions[i]==null)return;
+ commit();const v=n.versions[i].replace(/\n/g,' ');n.versions[i]=content(d);set(d,d.dataset.type==='paren'?'('+unparen(v)+')':v);commit()}
+function delVersion(id,i){const n=noteBy(id);if(!n)return;commit();n.versions.splice(i,1);commit()}
 function setMargin(on){mgOn=on;$('mgOn').checked=on;try{localStorage.setItem('guion:margen',on?'1':'0')}catch(_){}place()}
 // margin boxes: one per note, reused so typing in one is never interrupted; loose notes go to the panel
 function renderNotes(){
  const box=$('notes'),old=new Map([...box.children].map(e=>[e.dataset.id,e])),on=new Set([...ED.querySelectorAll(':scope>[data-note]')].map(d=>d.dataset.note));
  NT.forEach(n=>{let e=old.get(n.id);old.delete(n.id);
-  if(!e){e=document.createElement('div');e.className='nt';e.dataset.id=n.id;e.hidden=true;e.innerHTML='<textarea rows="2" aria-label="Nota"></textarea><button data-x aria-label="Borrar nota">✕</button>';box.append(e)}
-  const ta=e.firstChild;if(ta!==document.activeElement&&ta.value!==n.text)ta.value=n.text});
+  if(!e){e=document.createElement('div');e.className='nt';e.dataset.id=n.id;e.hidden=true;e.innerHTML='<div><textarea rows="2" aria-label="Nota"></textarea><button data-x aria-label="Borrar nota">✕</button></div><div class="vs"></div><div class="vf"><span></span><button data-av>+ versión</button></div>';box.append(e)}
+  const ta=e.querySelector('textarea'),vs=e.querySelector('.vs'),V=n.versions;if(ta!==document.activeElement&&ta.value!==n.text)ta.value=n.text;
+  if(vs.children.length!==V.length)vs.innerHTML=V.map((_,i)=>`<div class="v"><textarea rows="1" data-v="${i}" aria-label="Versión ${i+1}"></textarea><button data-sw aria-label="Usar la versión ${i+1}">⇄</button><button data-xv aria-label="Borrar la versión ${i+1}">✕</button></div>`).join('');
+  vs.querySelectorAll('textarea').forEach((t,i)=>{if(t!==document.activeElement&&t.value!==V[i])t.value=V[i]});
+  e.querySelector('.vf span').textContent=vCount(n)});
  old.forEach(e=>e.remove());
  const loose=NT.filter(n=>!on.has(n.id));
- $('lNot').innerHTML=loose.map(n=>`<li data-n="${h(n.id)}"><span>${h(n.text||'(vacía)')}<br><b>estaba en: ${h(n.from||'(línea vacía)')}</b></span><button data-h aria-label="Enganchar a la línea del cursor">⤶</button><button data-x aria-label="Borrar nota">✕</button></li>`).join('')||'<p>Ninguna. Si borras una línea con nota, la nota aparece aquí.</p>';
+ $('lNot').innerHTML=loose.map(n=>`<li data-n="${h(n.id)}"><span>${h(n.text||'(vacía)')}${n.versions.length?' · '+vCount(n):''}<br><b>estaba en: ${h(n.from||'(línea vacía)')}</b></span><button data-h aria-label="Enganchar a la línea del cursor">⤶</button><button data-x aria-label="Borrar nota">✕</button></li>`).join('')||'<p>Ninguna. Si borras una línea con nota, la nota aparece aquí.</p>';
  place()}
+const vCount=n=>n.versions.length?n.versions.length+(n.versions.length>1?' versiones':' versión'):'';
 const place=()=>{if(!raf)raf=requestAnimationFrame(layoutNotes)};
 // wide screen: every note beside its line, pushed down if it would overlap the one above; narrow: only the cursor line's note, under it
 function layoutNotes(){
@@ -389,12 +410,18 @@ function layoutNotes(){
  const P=L.map(d=>[E.get(d.dataset.note),m==='mg'?d.offsetTop:d.offsetTop+d.offsetHeight]),H=P.map(([e])=>e.offsetHeight);
  let y=0;P.forEach(([e,t],i)=>{t=Math.max(t,y);e.style.top=t+'px';y=t+H[i]+6})}
 $('notes').addEventListener('input',ev=>{
- const ta=ev.target,n=NT.find(x=>x.id===ta.parentNode.dataset.id);if(!n)return;
- n.text=ta.value;if(!CSS.supports('field-sizing','content')){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px'}
+ const ta=ev.target,n=noteBy(ta.closest('.nt').dataset.id);if(!n)return;
+ if(ta.dataset.v!==undefined)n.versions[+ta.dataset.v]=ta.value;else n.text=ta.value;
+ if(!CSS.supports('field-sizing','content')){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px'}
  changed();place()});
-$('notes').addEventListener('click',ev=>{if(ev.target.dataset.x!==undefined)delNote(ev.target.parentNode.dataset.id)});
+$('notes').addEventListener('click',ev=>{
+ const t=ev.target,e=t.closest('.nt');if(!e)return;const id=e.dataset.id,v=t.closest('.v'),i=v?[...v.parentNode.children].indexOf(v):-1;
+ if(t.dataset.x!==undefined)delNote(id);
+ if(t.dataset.av!==undefined)addVersion(id);
+ if(t.dataset.sw!==undefined)swapVersion(id,i);
+ if(t.dataset.xv!==undefined)delVersion(id,i)});
 $('notes').addEventListener('keydown',ev=>{
- if(ev.key!=='Escape')return;const d=lineOf(ev.target.parentNode.dataset.id);
+ if(ev.key!=='Escape')return;const d=lineOf(ev.target.closest('.nt').dataset.id);
  if(d){ED.focus();caret(d,9e9)}});
 addEventListener('resize',place);
 PAN.addEventListener('change',ev=>{
@@ -478,7 +505,7 @@ function changed(){clearTimeout(tm);tm=setTimeout(commit,400)}
 function load(t,m,L,c,p,n){
  M=m;TI.value=t;MO.value=m;ED.dataset.mode=m;setCover(c);
  PL=Array.isArray(p)?p.filter(x=>x&&x.id&&x.n).map(x=>({id:String(x.id),n:String(x.n)})):[];jp={};
- NT=Array.isArray(n)?n.filter(x=>x&&x.id).map(x=>({id:String(x.id),text:String(x.text||''),from:String(x.from||'')})):[];
+ NT=Array.isArray(n)?n.filter(x=>x&&x.id).map(x=>({id:String(x.id),text:String(x.text||''),from:String(x.from||''),versions:Array.isArray(x.versions)?x.versions.map(String):[]})):[];
  ED.replaceChildren(...L.map(([ty,tx,pl,nt])=>mk(conv(ty,m),String(tx).replace(/\n/g,' '),pl,nt)));
  if(!ED.children.length)ED.append(mk('heading',''));
  TIPO.innerHTML=CYC[m].map(t=>`<option value="${t}">${LABEL[t]}</option>`).join('');
@@ -555,6 +582,7 @@ MO.onchange=()=>{
 /* ---------- Fountain ---------- */
 function toFountain(){
  const c=getCover(),F=[['Title',c.title||TI.value],['Credit',c.credit],['Author',c.author],['Source',c.source],['Revision',c.version],['Draft date',c.date],['Contact',[c.email,c.phone].filter(Boolean).join('\n')],['Copyright',c.copyright],['Notes',c.notes]];
+ const used=new Set;
  let o=F.filter(x=>x[1].trim()).map(([k,v])=>{const L=v.split('\n').filter(s=>s.trim());return L.length>1?k+':\n'+L.map(s=>'    '+s.trim()).join('\n')+'\n':k+': '+L[0].trim()+'\n'}).join('')+`Mode: ${M}\n`,prev=null;
  lines().forEach(l=>{
   const t=l.text.trim();if(!t)return;let s;
@@ -566,35 +594,47 @@ function toFountain(){
    case'transition':s=t.toUpperCase();if(!/TO:$/.test(s))s='> '+s;break;
    case'act':s='# '+t;break;
    default:s=(t===t.toUpperCase()&&/\p{L}/u.test(t))?'!'+t:t}
+  const n=l.note&&noteBy(l.note);if(n){s+=' '+noteTags(n);used.add(n.id)}
   const cont=(l.type==='paren'||l.type==='dialogue')&&(prev==='character'||prev==='paren'||prev==='dialogue');
   o+=(cont?'':'\n')+s+'\n';prev=l.type});
+ NT.filter(n=>!used.has(n.id)).forEach(n=>o+='\n'+noteTags(n)+'\n');// loose notes (or on an empty line) go at the end, one paragraph each
  return o}
+// a blank line would end the note in Fountain, so it carries two spaces
+const noteTags=n=>[['nota',n.text],...n.versions.map(v=>['version',v])].map(([k,v])=>`[[${k}: ${v.replace(/\]\]/g,'] ]').replace(/\n(?=\n|$)/g,'\n  ')}]]`).join(' ');
 function parseFountain(src){
- // notes are dropped, except [[lugar: …]], which tags its heading
- src=src.replace(/\r/g,'').replace(/\/\*[\s\S]*?\*\//g,'').replace(/\[\[(?!\s*lugar:)[\s\S]*?\]\]/gi,'');
- const R=src.split('\n'),meta={},out=[],P=[];let i=0;
+ // [[lugar: …]] tags its heading; [[nota: …]], [[version: …]] and any other note go to the note of their line;
+ // a line with only notes is a loose note. Notes may span lines, so they are swapped for a token before splitting
+ src=src.replace(/\r/g,'').replace(/\/\*[\s\S]*?\*\//g,'');
+ const NB=[],N=[];src=src.replace(/\[\[(?!\s*lugar:)([\s\S]*?)\]\]/gi,(_,b)=>'\u0001'+(NB.push(b.split('\n').map(x=>x.trim()?x:'').join('\n'))-1)+'\u0001');
+ const R=src.split('\n'),meta={},out=[],P=[];let i=0,B=[];
  const pid=n=>{if(!n)return;let p=P.find(x=>x.n.toUpperCase()===n.toUpperCase());if(!p)P.push(p={id:String(P.length+1),n});return p.id};
+ const nid=()=>{if(!B.length)return;const n={id:String(N.length+1),text:'',from:'',versions:[]},T=[];
+  B.forEach(b=>{const m=b.match(/^\s*(nota|versi[oó]n): ?([\s\S]*)$/i);if(!m)T.push(b.trim());else if(m[1].toLowerCase()==='nota')T.push(m[2]);else n.versions.push(m[2].replace(/\n/g,' '))});
+  n.text=T.join('\n');N.push(n);B=[];return n.id};
+ const add=x=>{const id=nid();if(id){while(x.length<3)x.push('');x[3]=id}out.push(x)};
  const KEY=/^(Title|Credit|Author|Authors|Source|Revision|Draft date|Date|Contact|Copyright|Notes|Mode)\s*:\s*(.*)/i;
- if(KEY.test(R[0]||'')){let k;for(;i<R.length&&R[i].trim();i++){const m=R[i].match(KEY);
-  if(m){k=m[1].toLowerCase();meta[k]=m[2].trim()}else if(k&&/^(\t| {3})/.test(R[i]))meta[k]+=(meta[k]?'\n':'')+R[i].trim()}}
+ if(KEY.test(R[0]||'')){let k;for(;i<R.length&&R[i].trim();i++){const r=R[i].replace(/\u0001\d+\u0001/g,''),m=r.match(KEY);
+  if(m){k=m[1].toLowerCase();meta[k]=m[2].trim()}else if(k&&/^(\t| {3})/.test(r))meta[k]+=(meta[k]?'\n':'')+r.trim()}}
  const teatro=(meta.mode||'').toLowerCase()==='teatro';
  let blank=true,dlg=false;
  for(;i<R.length;i++){
-  let pl='';const t=R[i].replace(/\s*\[\[\s*lugar:\s*([^\]]*?)\s*\]\]/gi,(_,n)=>(pl=n,'')).trim();
+  let pl='';const t=R[i].replace(/\u0001(\d+)\u0001/g,(_,k)=>(B.push(NB[k]),'')).replace(/\s*\[\[\s*lugar:\s*([^\]]*?)\s*\]\]/gi,(_,n)=>(pl=n,'')).trim();
+  if(!t&&B.length){nid();continue}
   if(!t){blank=true;dlg=false;continue}
-  const nextBlank=!(R[i+1]||'').trim();
-  if(dlg){out.push(/^\(.*\)$/.test(t)?['paren',unparen(t)]:['dialogue',t]);blank=false;continue}
-  if(t[0]==='#'){if(teatro)out.push(['act',t.replace(/^#+\s*/,'')])}
+  const nextBlank=!(R[i+1]||'').trim(),k=out.length;
+  if(dlg){add(/^\(.*\)$/.test(t)?['paren',unparen(t)]:['dialogue',t]);blank=false;continue}
+  if(t[0]==='#'){if(teatro)add(['act',t.replace(/^#+\s*/,'')])}
   else if(t[0]==='=');
-  else if(/^\.(?!\.)/.test(t)||HEAD.test(t)){const x=['heading',t.replace(/^\./,'').replace(/\s*#[^#]+#\s*$/,'')],id=pid(pl);if(id)x.push(id);out.push(x)}
-  else if(t[0]==='>'&&t.slice(-1)!=='<')out.push(['transition',t.slice(1).trim()]);
-  else if(blank&&nextBlank&&/^[^a-z]*TO:$/.test(t))out.push(['transition',t]);
-  else if(blank&&!nextBlank&&(t[0]==='@'||(t===t.toUpperCase()&&/\p{L}/u.test(t)&&t[0]!=='!'))){out.push(['character',t.replace(/^@/,'').replace(/\s*\^$/,'')]);dlg=true}
-  else out.push([teatro?'stage':'action',t.replace(/^!/,'')]);
+  else if(/^\.(?!\.)/.test(t)||HEAD.test(t)){const x=['heading',t.replace(/^\./,'').replace(/\s*#[^#]+#\s*$/,'')],id=pid(pl);if(id)x.push(id);add(x)}
+  else if(t[0]==='>'&&t.slice(-1)!=='<')add(['transition',t.slice(1).trim()]);
+  else if(blank&&nextBlank&&/^[^a-z]*TO:$/.test(t))add(['transition',t]);
+  else if(blank&&!nextBlank&&(t[0]==='@'||(t===t.toUpperCase()&&/\p{L}/u.test(t)&&t[0]!=='!'))){add(['character',t.replace(/^@/,'').replace(/\s*\^$/,'')]);dlg=true}
+  else add([teatro?'stage':'action',t.replace(/^!/,'')]);
+  if(out.length===k)nid();// a line that is not kept leaves its note loose
   blank=false}
  const c={credit:meta.credit,author:meta.author||meta.authors,source:meta.source,version:meta.revision,date:meta['draft date']||meta.date,...contactParts(meta.contact||''),copyright:meta.copyright,notes:meta.notes};
  c.on=Object.values(c).some(Boolean);
- return{t:(meta.title||'Sin título').replace(/\n/g,' '),m:teatro?'teatro':'cine',l:out,c,p:P}}
+ return{t:(meta.title||'Sin título').replace(/\n/g,' '),m:teatro?'teatro':'cine',l:out,c,p:P,n:N}}
 
 /* ---------- menú Archivo ---------- */
 function dl(name,text,type){
