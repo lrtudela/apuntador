@@ -59,7 +59,10 @@ details>div select{flex:1}
 #panel th,#panel td{border:1px solid var(--ln);padding:3px 6px;text-align:center;min-width:1.6em}
 #panel thead th{color:var(--dim);font-weight:400;white-space:nowrap}
 #panel tbody th{text-align:left;position:sticky;left:0;background:var(--paper);max-width:8em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#panel td{color:var(--acc)}
+#panel td{color:var(--acc);cursor:pointer}
+#panel td:hover{background:var(--bg)}
+#panel thead button{padding:2px 4px;min-width:1.8em;min-height:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer}
+#panel thead button:hover{color:var(--acc)}
 @media(min-width:900px){#panel{position:static;transform:none;width:300px;flex:none}#bpanel{display:none}}
 #wrap{flex:1;overflow:auto;padding:16px;position:relative}
 #ed>[data-note]{box-shadow:-8px 0 0 -4px var(--acc)}
@@ -196,7 +199,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    Al escribir un personaje se propone en gris el más cercano: la <b>flecha derecha</b> lo acepta, <b>Enter</b> confirma lo escrito, <b>Esc</b> lo descarta.<br>
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
    Pulsa ✎ junto a un personaje para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.<br><br>
-   <b>Presencias</b>: tabla con los personajes en filas y las escenas en columnas; ● marca las escenas en que habla cada uno (si solo se le nombra, no cuenta). Sirve para planificar ensayos y repartir papeles.<br><br>
+   <b>Presencias</b>: tabla con los personajes en filas y las escenas en columnas; ● marca las escenas en que habla cada uno (si solo se le nombra, no cuenta). Pulsa un número o una celda para ir a esa escena. Sirve para planificar ensayos y repartir papeles.<br><br>
    <b>Lugares</b>: dalos de alta en su pestaña. Con el cursor en una cabecera, elige allí su lugar; el texto de la cabecera no cambia. Pulsa un lugar para ir a sus escenas, una tras otra. ✎ cambia su nombre y ✕ lo borra (sus escenas se quedan sin lugar).<br><br>
    <b>Notas</b>: <b>Ctrl+Alt+M</b> (o «Nota en esta línea» en su pestaña) crea la nota de la línea del cursor o va a la que tiene; <b>Esc</b> vuelve al guion. Se ven en el margen derecho y nunca se imprimen. <b>Ctrl+Alt+N</b> salta a la siguiente línea con nota. Las líneas con nota llevan una marca a la izquierda, también con el margen cerrado, y arriba se ve cuántas notas hay. En pantallas estrechas no hay margen: pon el cursor en la línea para ver su nota debajo. Si borras una línea, su nota no se pierde: pasa a «Notas sueltas», desde donde la enganchas a la línea del cursor (⤶) o la borras (✕).<br>
    <b>Versiones</b>: en una nota, <b>+ versión</b> guarda una alternativa del texto de su línea (empieza siendo una copia, para que la edites). <b>⇄</b> la cambia por el texto de la línea, que pasa a ser una versión: no se pierde nada. Al exportar a Fountain, notas y versiones viajan como <code>[[nota: …]]</code> y <code>[[version: …]]</code>; las notas sueltas van al final.<br><br>
@@ -340,9 +343,9 @@ function renderPanels(){
   +(A.none.length?`<li data-p="" class="none"><span>${A.none.length} escena${A.none.length>1?'s':''} sin lugar</span></li>`:'');
  // presence: a character is in a scene if they speak in it; acts group the columns
  const G=[];let k=0;A.scenes.forEach(s=>{if(s.act)G.push({t:s.label,n:0});else{if(!G.length)G.push({t:'',n:0});G.at(-1).n++;k++}});
- const S=A.scenes.filter(s=>!s.act).map((s,j)=>`<th scope="col" title="${h(s.label)}">${j+1}</th>`).join('');
+ const SC=A.scenes.filter(s=>!s.act),S=SC.map((s,j)=>`<th scope="col"><button data-g="${s.i}" title="${h(s.label)}" aria-label="Ir a la escena ${h(s.label)}">${j+1}</button></th>`).join('');
  $('tPre').innerHTML=k&&A.chars.size?'<thead>'+(G.some(g=>g.t)?'<tr><th></th>'+G.filter(g=>g.n).map(g=>`<th colspan="${g.n}" scope="colgroup">${h(g.t)}</th>`).join('')+'</tr>':'')+`<tr><th></th>${S}</tr></thead><tbody>`
-  +[...A.chars].sort((a,b)=>b[1].n-a[1].n).map(([c,v])=>`<tr><th scope="row" title="${h(c)}">${h(c)}</th>`+Array.from({length:k},(_,j)=>`<td>${v.sc.has(j+1)?'●':''}</td>`).join('')+'</tr>').join('')+'</tbody>'
+  +[...A.chars].sort((a,b)=>b[1].n-a[1].n).map(([c,v])=>`<tr><th scope="row" title="${h(c)}">${h(c)}</th>`+Array.from({length:k},(_,j)=>`<td data-g="${SC[j].i}">${v.sc.has(j+1)?'●':''}</td>`).join('')+'</tr>').join('')+'</tbody>'
   :'<caption>Sin escenas o personajes todavía.</caption>';
  renderSel();renderNotes();
  $('stat').textContent=(ED.textContent.split(/\s+/).filter(Boolean).length)+' pal.'+(NT.length?` · ${NT.length} nota${NT.length>1?'s':''}`:'')}
@@ -475,6 +478,7 @@ PAN.addEventListener('click',ev=>{
  if(t.dataset.t){PAN.dataset.t=t.dataset.t;PAN.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b===t));PAN.querySelectorAll('section').forEach(s=>s.hidden=s.dataset.s!==t.dataset.t);return}
  if(t.dataset.add!==undefined){addPlace();return}
  if(t.dataset.nn!==undefined){noteHere();return}
+ if(t.dataset.g){goto(+t.dataset.g);return}
  const li=t.closest('li');if(!li)return;
  if(li.dataset.n!==undefined){if(t.dataset.x!==undefined)delNote(li.dataset.n);if(t.dataset.h!==undefined)hookNote(li.dataset.n);return}
  if(t.dataset.x!==undefined){delPlace(li.dataset.p,li.dataset.k);return}
