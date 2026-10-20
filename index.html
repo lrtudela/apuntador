@@ -53,6 +53,13 @@ details>div select{flex:1}
 #panel .chk{display:flex;align-items:center;gap:8px;margin:8px 0}
 #panel .chk input{width:22px;height:22px;margin:0;accent-color:var(--acc)}
 #panel h3{font-size:1rem;margin:12px 0 4px;color:var(--dim)}
+#panel .tw{overflow-x:auto}
+#panel table{border-collapse:collapse;font-size:.85rem}
+#panel caption{color:var(--dim);font-size:.9rem;text-align:left}
+#panel th,#panel td{border:1px solid var(--ln);padding:3px 6px;text-align:center;min-width:1.6em}
+#panel thead th{color:var(--dim);font-weight:400;white-space:nowrap}
+#panel tbody th{text-align:left;position:sticky;left:0;background:var(--paper);max-width:8em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#panel td{color:var(--acc)}
 @media(min-width:900px){#panel{position:static;transform:none;width:300px;flex:none}#bpanel{display:none}}
 #wrap{flex:1;overflow:auto;padding:16px;position:relative}
 #ed>[data-note]{box-shadow:-8px 0 0 -4px var(--acc)}
@@ -167,6 +174,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <button data-t="per">Personajes</button>
    <button data-t="lug">Lugares</button>
    <button data-t="not">Notas</button>
+   <button data-t="pre">Presencias</button>
    <button data-t="ayu">?</button>
   </nav>
   <section data-s="esc"><ul id="lEsc"></ul></section>
@@ -176,6 +184,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   <section data-s="not" hidden><button data-nn>Nota en esta línea</button>
    <label class="chk"><input type="checkbox" id="mgOn"> Margen de notas visible</label>
    <h3>Notas sueltas</h3><ul id="lNot"></ul></section>
+  <section data-s="pre" hidden><div class="tw"><table id="tPre"></table></div></section>
   <section data-s="ayu" hidden>
    <p><b>INT. DÍA</b> · editor de guion para cine y teatro<br><br>
    <b>Tab</b> / <b>Mayús+Tab</b>: cambia el tipo de línea.<br>
@@ -187,6 +196,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    Al escribir un personaje se propone en gris el más cercano: la <b>flecha derecha</b> lo acepta, <b>Enter</b> confirma lo escrito, <b>Esc</b> lo descarta.<br>
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
    Pulsa ✎ junto a un personaje para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.<br><br>
+   <b>Presencias</b>: tabla con los personajes en filas y las escenas en columnas; ● marca las escenas en que habla cada uno (si solo se le nombra, no cuenta). Sirve para planificar ensayos y repartir papeles.<br><br>
    <b>Lugares</b>: dalos de alta en su pestaña. Con el cursor en una cabecera, elige allí su lugar; el texto de la cabecera no cambia. Pulsa un lugar para ir a sus escenas, una tras otra. ✎ cambia su nombre y ✕ lo borra (sus escenas se quedan sin lugar).<br><br>
    <b>Notas</b>: <b>Ctrl+Alt+M</b> (o «Nota en esta línea» en su pestaña) crea la nota de la línea del cursor o va a la que tiene; <b>Esc</b> vuelve al guion. Se ven en el margen derecho y nunca se imprimen. <b>Ctrl+Alt+N</b> salta a la siguiente línea con nota. Las líneas con nota llevan una marca a la izquierda, también con el margen cerrado, y arriba se ve cuántas notas hay. En pantallas estrechas no hay margen: pon el cursor en la línea para ver su nota debajo. Si borras una línea, su nota no se pierde: pasa a «Notas sueltas», desde donde la enganchas a la línea del cursor (⤶) o la borras (✕).<br>
    <b>Versiones</b>: en una nota, <b>+ versión</b> guarda una alternativa del texto de su línea (empieza siendo una copia, para que la edites). <b>⇄</b> la cambia por el texto de la línea, que pasa a ser una versión: no se pierde nada. Al exportar a Fountain, notas y versiones viajan como <code>[[nota: …]]</code> y <code>[[version: …]]</code>; las notas sueltas van al final.<br><br>
@@ -311,7 +321,7 @@ function enter(d,same){
 function analyze(skip){
  const chars=new Map,places={},none=[],scenes=[];let c=null,n=0;
  lines(skip).forEach((l,i)=>{
-  if(l.type==='character'){c=key(l.text);if(c&&!chars.has(c))chars.set(c,{n:0,first:i})}
+  if(l.type==='character'){c=key(l.text);if(c&&!chars.has(c))chars.set(c,{n:0,first:i,sc:new Set});if(c&&n)chars.get(c).sc.add(n)}
   else if(l.type==='dialogue'&&c)chars.get(c).n++;
   else if(l.type!=='paren')c=null;
   if(l.type==='heading'){
@@ -328,6 +338,12 @@ function renderPanels(){
  $('lPer').innerHTML=[...A.chars].sort((a,b)=>b[1].n-a[1].n).map(row).join('')||'<p>Sin personajes todavía.</p>';
  $('lLug').innerHTML=(PL.map(p=>`<li data-p="${h(p.id)}" data-k="${h(p.n)}"><span>${h(p.n)}</span><b>${(A.places[p.id]||[]).length}</b><button data-r aria-label="Renombrar ${h(p.n)}">✎</button><button data-x aria-label="Borrar ${h(p.n)}">✕</button></li>`).join('')||'<p>Sin lugares todavía.</p>')
   +(A.none.length?`<li data-p="" class="none"><span>${A.none.length} escena${A.none.length>1?'s':''} sin lugar</span></li>`:'');
+ // presence: a character is in a scene if they speak in it; acts group the columns
+ const G=[];let k=0;A.scenes.forEach(s=>{if(s.act)G.push({t:s.label,n:0});else{if(!G.length)G.push({t:'',n:0});G.at(-1).n++;k++}});
+ const S=A.scenes.filter(s=>!s.act).map((s,j)=>`<th scope="col" title="${h(s.label)}">${j+1}</th>`).join('');
+ $('tPre').innerHTML=k&&A.chars.size?'<thead>'+(G.some(g=>g.t)?'<tr><th></th>'+G.filter(g=>g.n).map(g=>`<th colspan="${g.n}" scope="colgroup">${h(g.t)}</th>`).join('')+'</tr>':'')+`<tr><th></th>${S}</tr></thead><tbody>`
+  +[...A.chars].sort((a,b)=>b[1].n-a[1].n).map(([c,v])=>`<tr><th scope="row" title="${h(c)}">${h(c)}</th>`+Array.from({length:k},(_,j)=>`<td>${v.sc.has(j+1)?'●':''}</td>`).join('')+'</tr>').join('')+'</tbody>'
+  :'<caption>Sin escenas o personajes todavía.</caption>';
  renderSel();renderNotes();
  $('stat').textContent=(ED.textContent.split(/\s+/).filter(Boolean).length)+' pal.'+(NT.length?` · ${NT.length} nota${NT.length>1?'s':''}`:'')}
 // whole-word mentions of a character, any case; \b does not know accents

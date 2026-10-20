@@ -661,6 +661,30 @@ with sync_playwright() as pw:
     check("papel: Esc cierra el diálogo sin imprimir", not R.evaluate("$('role').open") and R.evaluate("printed") == 0)
     hp = R.evaluate("document.querySelector('[data-s=ayu]').textContent")
     check("la ayuda explica el papel del actor", all(s in hp for s in ["Papel del actor", "pie", "Exportar también acotaciones", "pegados"]), hp)
+
+    # presence table: 3 characters, 4 scenes in 2 acts; only speaking counts, mentions do not
+    T = page()
+    PRE = [["character", "EVA"], ["dialogue", "Antes de todo."],
+           ["act", "Acto I"], ["heading", "ESCENA 1"], ["character", "ANA"], ["dialogue", "a"], ["character", "LUIS"], ["dialogue", "b"],
+           ["heading", "ESCENA 2"], ["stage", "LUIS y EVA miran."], ["character", "ANA (fuera)"], ["dialogue", "c"],
+           ["act", "Acto II"], ["heading", "ESCENA 3"], ["character", "EVA"], ["dialogue", "d"],
+           ["heading", "ESCENA 4"], ["character", "LUIS"], ["dialogue", "e"], ["character", "EVA"], ["dialogue", "f"], ["character", "ANA"], ["dialogue", "g"]]
+    T.evaluate("L=>{load('P','teatro',L);commit();renderPanels()}", PRE)
+    mx = lambda: T.evaluate("[...$('tPre').tBodies[0].rows].map(r=>[r.cells[0].textContent,[...r.cells].slice(1).map(c=>c.textContent?'x':'.').join('')])")
+    check("presencias: cada personaje marcado solo donde habla", sorted(mx()) == [["ANA", "xx.x"], ["EVA", "..xx"], ["LUIS", "x..x"]], mx())
+    hd = T.evaluate("[...$('tPre').tHead.rows].map(r=>[...r.cells].map(c=>c.textContent+(c.colSpan>1?'/'+c.colSpan:'')))")
+    check("presencias: escenas numeradas y agrupadas por acto", hd == [["", "Acto I/2", "Acto II/2"], ["", "1", "2", "3", "4"]], hd)
+    T.evaluate("rename('per','LUIS','LOLA');renderPanels()")
+    check("presencias: renombrar actualiza la tabla", sorted(mx()) == [["ANA", "xx.x"], ["EVA", "..xx"], ["LOLA", "x..x"]], mx())
+    T.click("#panel nav [data-t=pre]")
+    check("presencias: la pestaña muestra la tabla", T.is_visible("#tPre"))
+    T.evaluate("load('V','cine',[]);renderPanels()")
+    check("presencias: guion vacío avisa", "Sin escenas" in T.evaluate("$('tPre').textContent"))
+    M = page(360)
+    M.evaluate("L=>{load('M','cine',L);commit();renderPanels();PAN.classList.add('open')}", [x for i in range(30) for x in (["heading", f"INT. SITIO {i}"], ["character", "PERSONAJE CON NOMBRE LARGO"], ["dialogue", "x"])])
+    M.click("#panel nav [data-t=pre]")
+    sw = M.evaluate("[document.documentElement.scrollWidth,$('panel').scrollWidth<=$('panel').clientWidth,document.querySelector('#panel .tw').scrollWidth>document.querySelector('#panel .tw').clientWidth]")
+    check("presencias en 360px: la tabla se desplaza dentro, sin scroll en la página ni en el panel", sw == [360, True, True], sw)
     b.close()
 
 print("ERRORES JS:", errs)

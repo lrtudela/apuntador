@@ -10,6 +10,7 @@ Editor web de guiones para cine y teatro, inspirado en Fade In. Se abre en el na
 
 - **Cine y teatro.** Cada línea tiene un tipo (acción, personaje, diálogo, paréntesis, escena, transición; en teatro, acotación y acto). `Tab` cambia el tipo y `Enter` pasa a la línea que toca, así que se escribe sin quitar las manos del teclado.
 - **Personajes.** Se deducen del texto. Al escribir un nombre se propone el más cercano en gris y se acepta con la flecha derecha. Se pueden renombrar en todo el guion, eligiendo qué menciones cambian.
+- **Tabla de presencias.** Personajes en filas y escenas en columnas, con una marca donde habla cada uno: para planificar ensayos y repartir papeles.
 - **Lugares escritos por el autor.** Las cabeceras de escena no tienen un formato fijo («INT. DÍA», «INT/DÍA»…), así que el programa no las interpreta: das de alta tus lugares y los asignas como etiqueta, para seguirlos por el guion.
 - **Deshacer y rehacer propios**, hasta 300 pasos, también en guiones de miles de líneas.
 - **Autoguardado** en el navegador, con aviso si falla y si otra pestaña cambia el guion.
