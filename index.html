@@ -58,7 +58,10 @@ details>div select{flex:1}
 #panel caption{color:var(--dim);font-size:.9rem;text-align:left}
 #panel th,#panel td{border:1px solid var(--ln);padding:3px 6px;text-align:center;min-width:1.6em}
 #panel thead th{color:var(--dim);font-weight:400;white-space:nowrap}
-#panel tbody th{text-align:left;position:sticky;left:0;background:var(--paper);max-width:8em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#panel tbody th{text-align:left;position:sticky;left:0;background:var(--paper);white-space:nowrap}
+#panel tbody th span{display:inline-block;max-width:7em;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+#panel tbody th b,#ppres tbody th b{float:right;margin-left:.5em;font-weight:400}
+#panel tbody th b{color:var(--dim)}
 #panel td{color:var(--acc);cursor:pointer}
 #panel td:hover{background:var(--bg)}
 #panel thead button{padding:2px 4px;min-width:1.8em;min-height:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer}
@@ -211,7 +214,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    Al escribir un personaje se propone en gris el más cercano: la <b>flecha derecha</b> lo acepta, <b>Enter</b> confirma lo escrito, <b>Esc</b> lo descarta.<br>
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
    Pulsa ✎ junto a un personaje para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.<br><br>
-   <b>Presencias</b>: tabla con los personajes en filas y las escenas en columnas; ● marca las escenas en que habla cada uno (si solo se le nombra, no cuenta). Pulsa un número o una celda para ir a esa escena. Sirve para planificar ensayos y repartir papeles. Para llevarla en papel, <b>Archivo › Tabla de presencias</b>: sale apaisada, en bloques de 25 escenas, con la lista de cabeceras debajo.<br><br>
+   <b>Presencias</b>: tabla con los personajes en filas y las escenas en columnas; ● marca las escenas en que habla cada uno (si solo se le nombra, no cuenta), y el número junto a cada nombre dice en cuántas escenas está. Pulsa un número o una celda para ir a esa escena. Sirve para planificar ensayos y repartir papeles. Para llevarla en papel, <b>Archivo › Tabla de presencias</b>: sale apaisada, en bloques de 25 escenas, con la lista de cabeceras debajo.<br><br>
    <b>Lugares</b>: dalos de alta en su pestaña. Con el cursor en una cabecera, elige allí su lugar; el texto de la cabecera no cambia. Pulsa un lugar para ir a sus escenas, una tras otra. ✎ cambia su nombre y ✕ lo borra (sus escenas se quedan sin lugar).<br><br>
    <b>Notas</b>: <b>Ctrl+Alt+M</b> (o «Nota en esta línea» en su pestaña) crea la nota de la línea del cursor o va a la que tiene; <b>Esc</b> vuelve al guion. Se ven en el margen derecho y nunca se imprimen. <b>Ctrl+Alt+N</b> salta a la siguiente línea con nota. Las líneas con nota llevan una marca a la izquierda, también con el margen cerrado, y arriba se ve cuántas notas hay. En pantallas estrechas no hay margen: pon el cursor en la línea para ver su nota debajo. Si borras una línea, su nota no se pierde: pasa a «Notas sueltas», desde donde la enganchas a la línea del cursor (⤶) o la borras (✕).<br>
    <b>Versiones</b>: en una nota, <b>+ versión</b> guarda una alternativa del texto de su línea (empieza siendo una copia, para que la edites). <b>⇄</b> la cambia por el texto de la línea, que pasa a ser una versión: no se pierde nada. Al exportar a Fountain, notas y versiones viajan como <code>[[nota: …]]</code> y <code>[[version: …]]</code>; las notas sueltas van al final.<br><br>
@@ -364,7 +367,7 @@ function presTable(A,a=0,b=1e9){
  if(!c.length||!A.chars.size)return '<caption>Sin escenas o personajes todavía.</caption>';
  return '<thead>'+(G.some(g=>g.t)?'<tr><th></th>'+G.map(g=>`<th colspan="${g.n}" scope="colgroup">${h(g.t)}</th>`).join('')+'</tr>':'')
   +'<tr><th></th>'+c.map((s,j)=>`<th scope="col"><button data-g="${s.i}" title="${h(s.label)}" aria-label="Ir a la escena ${h(s.label)}">${a+j+1}</button></th>`).join('')+'</tr></thead><tbody>'
-  +[...A.chars].sort((x,y)=>y[1].n-x[1].n).map(([k,v])=>`<tr><th scope="row" title="${h(k)}">${h(k)}</th>`+c.map((s,j)=>`<td data-g="${s.i}">${v.sc.has(a+j+1)?'●':''}</td>`).join('')+'</tr>').join('')+'</tbody>'}
+  +[...A.chars].sort((x,y)=>y[1].n-x[1].n).map(([k,v])=>`<tr><th scope="row" title="${h(k)}: ${v.sc.size} escena${v.sc.size===1?'':'s'}"><span>${h(k)}</span> <b>${v.sc.size}</b></th>`+c.map((s,j)=>`<td data-g="${s.i}">${v.sc.has(a+j+1)?'●':''}</td>`).join('')+'</tr>').join('')+'</tbody>'}
 // whole-word mentions of a character, any case; \b does not know accents
 const mentionRe=k=>new RegExp('(?<![\\p{L}\\p{N}])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![\\p{L}\\p{N}])','giu');
 const MENT=['action','stage','paren','dialogue'];

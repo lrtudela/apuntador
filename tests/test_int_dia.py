@@ -670,8 +670,10 @@ with sync_playwright() as pw:
            ["act", "Acto II"], ["heading", "ESCENA 3"], ["character", "EVA"], ["dialogue", "d"],
            ["heading", "ESCENA 4"], ["character", "LUIS"], ["dialogue", "e"], ["character", "EVA"], ["dialogue", "f"], ["character", "ANA"], ["dialogue", "g"]]
     T.evaluate("L=>{load('P','teatro',L);commit();renderPanels()}", PRE)
-    mx = lambda: T.evaluate("[...$('tPre').tBodies[0].rows].map(r=>[r.cells[0].textContent,[...r.cells].slice(1).map(c=>c.textContent?'x':'.').join('')])")
+    mx = lambda: T.evaluate("[...$('tPre').tBodies[0].rows].map(r=>[r.cells[0].querySelector('span').textContent,[...r.cells].slice(1).map(c=>c.textContent?'x':'.').join('')])")
     check("presencias: cada personaje marcado solo donde habla", sorted(mx()) == [["ANA", "xx.x"], ["EVA", "..xx"], ["LUIS", "x..x"]], mx())
+    tot = T.evaluate("[...$('tPre').tBodies[0].rows].map(r=>r.cells[0].querySelector('span').textContent+r.cells[0].querySelector('b').textContent+(r.cells[0].title.endsWith('escenas')?'s':''))")
+    check("presencias: total de escenas junto a cada nombre, en el orden del panel Personajes", tot == ["EVA2s", "ANA3s", "LUIS2s"], tot)
     hd = T.evaluate("[...$('tPre').tHead.rows].map(r=>[...r.cells].map(c=>c.textContent+(c.colSpan>1?'/'+c.colSpan:'')))")
     check("presencias: escenas numeradas y agrupadas por acto", hd == [["", "Acto I/2", "Acto II/2"], ["", "1", "2", "3", "4"]], hd)
     T.evaluate("rename('per','LUIS','LOLA');renderPanels()")
@@ -696,10 +698,10 @@ with sync_playwright() as pw:
                [x for i in range(30) for x in (["heading", f"INT. SITIO {i + 1}"], ["character", "ANA" if i % 2 else "LUIS"], ["dialogue", "x"])])
     P.click("#menu summary"); P.click("#menu [data-act=pres]")
     pp = P.evaluate("""[printed,document.documentElement.dataset.print,[...$('ppres').querySelectorAll('table')].map(t=>[[...t.tHead.rows[0].cells].slice(1).map(c=>+c.textContent),
-        [...t.tBodies[0].rows].map(r=>r.cells[0].textContent+':'+[...r.cells].slice(1).map(c=>c.textContent?'x':'.').join(''))]),[...$('ppres').querySelectorAll('li')].map(l=>l.textContent)]""")
+        [...t.tBodies[0].rows].map(r=>r.cells[0].querySelector('span').textContent+'/'+r.cells[0].querySelector('b').textContent+':'+[...r.cells].slice(1).map(c=>c.textContent?'x':'.').join(''))]),[...$('ppres').querySelectorAll('li')].map(l=>l.textContent)]""")
     check("presencias impresas: Archivo › Tabla de presencias imprime", pp[:2] == [1, "pres"], pp[:2])
-    check("presencias impresas: bloques de 25 escenas con los nombres repetidos", [[b[0][0], b[0][-1], len(b[0])] for b in pp[2]] == [[1, 25, 25], [26, 30, 5]]
-          and sorted(pp[2][1][1]) == ["ANA:x.x.x", "LUIS:.x.x."], pp[2])
+    check("presencias impresas: bloques de 25 escenas con los nombres y el total repetidos", [[b[0][0], b[0][-1], len(b[0])] for b in pp[2]] == [[1, 25, 25], [26, 30, 5]]
+          and sorted(pp[2][1][1]) == ["ANA/15:x.x.x", "LUIS/15:.x.x."], pp[2])
     check("presencias impresas: lista de cabeceras numeradas", len(pp[3]) == 30 and pp[3][29] == "30. INT. SITIO 30", pp[3][-1:])
     P.emulate_media(media="print")
     pv = P.evaluate("['ed','pcover','prole','ppres'].map(i=>getComputedStyle($(i)).display).concat(getComputedStyle($('ppres')).page)")
