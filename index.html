@@ -387,12 +387,13 @@ function applySug(v){const d=cur();if(!d)return;set(d,v);caret(d,9e9);changed();
 SUG.addEventListener('pointerdown',ev=>{if(ev.target.dataset.v){ev.preventDefault();applySug(ev.target.dataset.v)}});
 
 /* ---------- historial y guardado ---------- */
-function snap(){
- const k=JSON.stringify([TI.value,M,rows(),getCover(),PL]);
- if(hist[pos]&&hist[pos].k===k)return;
+function snap(){// each step keeps one string per line; unchanged lines reuse the previous step's string, so long scripts don't copy everything
+ const k=JSON.stringify([TI.value,M,getCover(),PL]),pv=hist[pos];let L=rows().map(r=>JSON.stringify(r));
+ if(pv&&pv.k===k&&pv.L.length===L.length&&L.every((x,j)=>x===pv.L[j]))return;
+ if(pv){const m=new Map(pv.L.map(x=>[x,x]));L=L.map(x=>m.get(x)||x)}
  const d=cur();let i=-1,o=0;
  if(d){i=[...ED.children].indexOf(d);const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setEnd(s.anchorNode,s.anchorOffset);o=r.toString().length}
- hist=hist.slice(0,pos+1);hist.push({k,i,o});pos++;
+ hist=hist.slice(0,pos+1);hist.push({k,L,i,o});pos++;
  if(hist.length>300){hist.shift();pos--}}
 function save(){const s=$('saved');if(other)return;try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:rows(),c:getCover(),p:PL}));s.textContent='Guardado';s.className=''}
  catch(_){s.textContent='No se pudo guardar: usa Archivo › Guardar .json';s.className='err'}}
@@ -407,7 +408,7 @@ function load(t,m,L,c,p){
  last=ED.firstChild;TIPO.value=last.dataset.type;
  renderPanels()}
 function restore(e){
- const[t,m,L,c,p]=JSON.parse(e.k);load(t,m,L,c,p);save();
+ const[t,m,c,p]=JSON.parse(e.k);load(t,m,e.L.map(x=>JSON.parse(x)),c,p);save();
  ED.focus();const d=ED.children[e.i];if(d)caret(d,e.o)}
 function undo(){commit();if(pos>0)restore(hist[--pos])}
 function redo(){if(pos<hist.length-1)restore(hist[++pos])}
