@@ -690,6 +690,23 @@ with sync_playwright() as pw:
     M.click("#panel nav [data-t=pre]")
     sw = M.evaluate("[document.documentElement.scrollWidth,$('panel').scrollWidth<=$('panel').clientWidth,document.querySelector('#panel .tw').scrollWidth>document.querySelector('#panel .tw').clientWidth]")
     check("presencias en 360px: la tabla se desplaza dentro, sin scroll en la página ni en el panel", sw == [360, True, True], sw)
+    # on paper: landscape, blocks of 25 scenes with the names repeated, headings listed below
+    P = page()
+    P.evaluate("L=>{load('Larga','cine',L);commit();window.printed=0;window.print=()=>printed++}",
+               [x for i in range(30) for x in (["heading", f"INT. SITIO {i + 1}"], ["character", "ANA" if i % 2 else "LUIS"], ["dialogue", "x"])])
+    P.click("#menu summary"); P.click("#menu [data-act=pres]")
+    pp = P.evaluate("""[printed,document.documentElement.dataset.print,[...$('ppres').querySelectorAll('table')].map(t=>[[...t.tHead.rows[0].cells].slice(1).map(c=>+c.textContent),
+        [...t.tBodies[0].rows].map(r=>r.cells[0].textContent+':'+[...r.cells].slice(1).map(c=>c.textContent?'x':'.').join(''))]),[...$('ppres').querySelectorAll('li')].map(l=>l.textContent)]""")
+    check("presencias impresas: Archivo › Tabla de presencias imprime", pp[:2] == [1, "pres"], pp[:2])
+    check("presencias impresas: bloques de 25 escenas con los nombres repetidos", [[b[0][0], b[0][-1], len(b[0])] for b in pp[2]] == [[1, 25, 25], [26, 30, 5]]
+          and sorted(pp[2][1][1]) == ["ANA:x.x.x", "LUIS:.x.x."], pp[2])
+    check("presencias impresas: lista de cabeceras numeradas", len(pp[3]) == 30 and pp[3][29] == "30. INT. SITIO 30", pp[3][-1:])
+    P.emulate_media(media="print")
+    pv = P.evaluate("['ed','pcover','prole','ppres'].map(i=>getComputedStyle($(i)).display).concat(getComputedStyle($('ppres')).page)")
+    check("presencias impresas: solo la tabla, en su página apaisada", pv == ["none", "none", "none", "block", "pres"], pv)
+    P.evaluate("dispatchEvent(new Event('afterprint'))")
+    check("tras la tabla, el guion se imprime igual que antes", P.evaluate("getComputedStyle($('ppres')).display+getComputedStyle($('ed')).display") == "noneblock")
+    P.emulate_media(media="screen")
     b.close()
 
 print("ERRORES JS:", errs)
