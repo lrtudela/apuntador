@@ -49,8 +49,18 @@ details>div select{flex:1}
 #lSel select{width:100%}
 #panel .add{display:flex;gap:6px;margin-top:8px}
 #panel .add input{flex:1;min-width:0}
+#panel .chk{display:flex;align-items:center;gap:8px;margin:8px 0}
+#panel .chk input{width:22px;height:22px;margin:0;accent-color:var(--acc)}
+#panel h3{font-size:1rem;margin:12px 0 4px;color:var(--dim)}
 @media(min-width:900px){#panel{position:static;transform:none;width:300px;flex:none}#bpanel{display:none}}
-#wrap{flex:1;overflow:auto;padding:16px}
+#wrap{flex:1;overflow:auto;padding:16px;position:relative}
+#ed>[data-note]{box-shadow:-8px 0 0 -4px var(--acc)}
+#notes .nt{position:absolute;z-index:1;display:flex;gap:2px;left:16px;right:16px;background:var(--bg)}
+#notes .nt[hidden]{display:none}
+#notes textarea{flex:1;min-width:0;font:inherit;font-size:.85rem;color:inherit;background:var(--paper);border:2px solid var(--ln);border-left-color:var(--acc);padding:.3rem .5rem;resize:vertical;field-sizing:content;min-height:2.6em;max-height:40vh}
+#notes textarea:focus-visible{border-color:var(--acc);outline:none}
+#notes button{min-height:0;padding:0 .4rem;align-self:flex-start}
+@media screen and (min-width:1100px){#wrap[data-m=mg]{padding-right:272px}#wrap[data-m=mg] .nt{left:auto;width:240px}}
 #ptitle,#pcover{display:none}
 dialog{width:min(34rem,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:12px;background:var(--paper);color:var(--fg);border:2px solid var(--acc)}
 dialog::backdrop{background:rgb(0 0 0/.6)}
@@ -104,7 +114,8 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  #pcover .b>div+div{text-align:right}
  #pcover .f{margin-top:2em;font-size:.9rem}
  #ed{max-width:none;padding:0}
- #ed>div{break-inside:avoid;background:none!important}
+ #ed>div{break-inside:avoid;background:none!important;box-shadow:none!important}
+ #notes{display:none}
  #ed>[data-ghost]::after{content:none}
  #ed>[data-type=heading],#ed>[data-type=character],#ed>[data-type=act]{break-after:avoid}
 }
@@ -136,12 +147,16 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <button data-t="esc" class="on">Escenas</button>
    <button data-t="per">Personajes</button>
    <button data-t="lug">Lugares</button>
+   <button data-t="not">Notas</button>
    <button data-t="ayu">?</button>
   </nav>
   <section data-s="esc"><ul id="lEsc"></ul></section>
   <section data-s="per" hidden><ul id="lPer"></ul></section>
   <section data-s="lug" hidden><div id="lSel"></div><ul id="lLug"></ul>
    <div class="add"><input id="lugNew" placeholder="Nuevo lugar" aria-label="Nuevo lugar"><button data-add>Añadir</button></div></section>
+  <section data-s="not" hidden><button data-nn>Nota en esta línea</button>
+   <label class="chk"><input type="checkbox" id="mgOn"> Margen de notas visible</label>
+   <h3>Notas sueltas</h3><ul id="lNot"></ul></section>
   <section data-s="ayu" hidden>
    <p><b>INT. DÍA</b> · editor de guion para cine y teatro<br><br>
    <b>Tab</b> / <b>Mayús+Tab</b>: cambia el tipo de línea.<br>
@@ -153,13 +168,15 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    Al escribir un personaje se propone en gris el más cercano: la <b>flecha derecha</b> lo acepta, <b>Enter</b> confirma lo escrito, <b>Esc</b> lo descarta.<br>
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
    Pulsa ✎ junto a un personaje para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.<br><br>
-   <b>Lugares</b>: dalos de alta en su pestaña. Con el cursor en una cabecera, elige allí su lugar; el texto de la cabecera no cambia. Pulsa un lugar para ir a sus escenas, una tras otra. ✎ cambia su nombre y ✕ lo borra (sus escenas se quedan sin lugar).</p>
+   <b>Lugares</b>: dalos de alta en su pestaña. Con el cursor en una cabecera, elige allí su lugar; el texto de la cabecera no cambia. Pulsa un lugar para ir a sus escenas, una tras otra. ✎ cambia su nombre y ✕ lo borra (sus escenas se quedan sin lugar).<br><br>
+   <b>Notas</b>: <b>Ctrl+Alt+M</b> (o «Nota en esta línea» en su pestaña) crea la nota de la línea del cursor o va a la que tiene; <b>Esc</b> vuelve al guion. Se ven en el margen derecho y nunca se imprimen. <b>Ctrl+Alt+N</b> salta a la siguiente línea con nota. Las líneas con nota llevan una marca a la izquierda, también con el margen cerrado, y arriba se ve cuántas notas hay. En pantallas estrechas no hay margen: pon el cursor en la línea para ver su nota debajo. Si borras una línea, su nota no se pierde: pasa a «Notas sueltas», desde donde la enganchas a la línea del cursor (⤶) o la borras (✕).</p>
   </section>
  </aside>
  <div id="wrap">
   <div id="pcover"></div>
   <h1 id="ptitle"></h1>
   <div id="ed" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Guion"></div>
+  <div id="notes" aria-label="Notas al margen"></div>
  </div>
 </div>
 <footer>
@@ -201,7 +218,8 @@ const NEXT={
 const ALT={cine:{character:'paren',dialogue:'action'},teatro:{character:'paren',dialogue:'stage'}};
 const HEAD=/^(INT\.?\/EXT|I\/E|INT|EXT)\.?\s+/i;
 const DEMO=[['heading','INT. COCINA - NOCHE'],['action','Una luz tenue sobre la mesa. ANA espera con el móvil en la mano.'],['character','ANA'],['dialogue','Dijo que vendría antes de las doce.'],['character','LUIS'],['paren','sin mirarla'],['dialogue','Siempre dice lo mismo.']];
-let M='cine',last=null,tm=0,other=null,hist=[],pos=-1,esc=null,free=false,fresh=null,PL=[],jp={};// PL: the author's places [{id,n}]; headings point to an id in data-place
+let M='cine',last=null,tm=0,other=null,hist=[],pos=-1,esc=null,free=false,fresh=null,PL=[],jp={},NT=[],mgOn=true,raf=0;// PL: the author's places [{id,n}]; headings point to an id in data-place
+// NT: notes [{id,text,from}]; any line may point to one in data-note. A note outlives its line (loose); from = start of its last line
 
 const h=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unparen=s=>s.replace(/^\(+|\)+$/g,'');
@@ -214,10 +232,11 @@ function conv(t,m){
 /* ---------- DOM de líneas ---------- */
 function fix(d){if(!d.textContent&&!d.querySelector('br'))d.innerHTML='<br>'}
 function set(d,t){d.textContent=t;fix(d)}
-function mk(type,text,place){
+function mk(type,text,place,note){
  if(!LABEL[type])type='action';
  const d=document.createElement('div');d.dataset.type=type;
  if(type==='heading'&&place&&PL.some(p=>p.id===place))d.dataset.place=place;
+ if(note&&NT.some(n=>n.id===note))d.dataset.note=note;
  if(type==='paren')text='('+unparen(text)+')';
  set(d,text);return d}
 function caret(d,o){
@@ -229,9 +248,9 @@ function cur(){
  if(!n||n===ED||!ED.contains(n))return null;
  while(n&&n.parentNode!==ED)n=n.parentNode;
  return n&&n.nodeName==='DIV'?n:null}
-const lines=skip=>[...ED.children].filter(d=>d!==skip).map(d=>{const o={type:d.dataset.type,text:d.textContent.replace(/ /g,' ')};if(o.type==='heading'&&d.dataset.place)o.place=d.dataset.place;return o});
-// stored form of a line: [type,text], plus the place id on tagged headings
-const rows=()=>lines().map(x=>x.place?[x.type,x.text,x.place]:[x.type,x.text]);
+const lines=skip=>[...ED.children].filter(d=>d!==skip).map(d=>{const o={type:d.dataset.type,text:d.textContent.replace(/ /g,' ')};if(o.type==='heading'&&d.dataset.place)o.place=d.dataset.place;if(d.dataset.note)o.note=d.dataset.note;return o});
+// stored form of a line: [type,text], plus the place id on tagged headings, plus the note id ('' as place if none)
+const rows=()=>lines().map(x=>x.note?[x.type,x.text,x.place||'',x.note]:x.place?[x.type,x.text,x.place]:[x.type,x.text]);
 function norm(){
  if(!ED.firstChild||[...ED.childNodes].some(n=>n.nodeName!=='DIV')){
   const t=ED.textContent;ED.replaceChildren(mk(t?defType():'heading',t));caret(ED.firstChild,9e9)}
@@ -278,8 +297,8 @@ function renderPanels(){
  $('lPer').innerHTML=[...A.chars].sort((a,b)=>b[1].n-a[1].n).map(row).join('')||'<p>Sin personajes todavía.</p>';
  $('lLug').innerHTML=(PL.map(p=>`<li data-p="${h(p.id)}" data-k="${h(p.n)}"><span>${h(p.n)}</span><b>${(A.places[p.id]||[]).length}</b><button data-r aria-label="Renombrar ${h(p.n)}">✎</button><button data-x aria-label="Borrar ${h(p.n)}">✕</button></li>`).join('')||'<p>Sin lugares todavía.</p>')
   +(A.none.length?`<li data-p="" class="none"><span>${A.none.length} escena${A.none.length>1?'s':''} sin lugar</span></li>`:'');
- renderSel();
- $('stat').textContent=(ED.textContent.split(/\s+/).filter(Boolean).length)+' pal.'}
+ renderSel();renderNotes();
+ $('stat').textContent=(ED.textContent.split(/\s+/).filter(Boolean).length)+' pal.'+(NT.length?` · ${NT.length} nota${NT.length>1?'s':''}`:'')}
 // whole-word mentions of a character, any case; \b does not know accents
 const mentionRe=k=>new RegExp('(?<![\\p{L}\\p{N}])'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?![\\p{L}\\p{N}])','giu');
 const MENT=['action','stage','paren','dialogue'];
@@ -326,7 +345,60 @@ function renderSel(){
  const d=last&&last.isConnected&&last.dataset.type==='heading'?last:null;
  $('lSel').innerHTML=d?`<label>Lugar de esta escena <select>${['<option value="">(ninguno)</option>',...PL.map(p=>`<option value="${h(p.id)}"${p.id===d.dataset.place?' selected':''}>${h(p.n)}</option>`)].join('')}</select></label>`
   :'<p>Pon el cursor en una cabecera para darle lugar.</p>'}
+/* ---------- notas: lista aparte; cada línea puede apuntar a una; sin línea, la nota queda suelta ---------- */
+const lineOf=id=>ED.querySelector(`:scope>[data-note="${CSS.escape(id)}"]`);
+const wide=()=>matchMedia('(min-width:1100px)').matches;
+// a line the browser split by itself (mobile keyboards) copies data-note: the note stays on the first part
+function noteFrom(){const m=new Map(NT.map(n=>[n.id,n])),seen=new Set;ED.querySelectorAll(':scope>[data-note]').forEach(d=>{const n=m.get(d.dataset.note);if(!n||seen.has(n)){delete d.dataset.note;return}seen.add(n);n.from=d.textContent.slice(0,80)})}
+// creates the note of the cursor's line, or goes to the one it has
+function noteHere(d=last){
+ if(!d||!d.isConnected)return;last=d;
+ if(!NT.some(n=>n.id===d.dataset.note)){commit();d.dataset.note=String(NT.reduce((m,n)=>Math.max(m,+n.id||0),0)+1);NT.push({id:d.dataset.note,text:'',from:''});commit()}
+ if(wide()&&!mgOn)setMargin(true);
+ if(innerWidth<900)PAN.classList.remove('open');
+ layoutNotes();const e=$('notes').querySelector(`[data-id="${CSS.escape(d.dataset.note)}"] textarea`);if(e)e.focus()}
+function delNote(id){
+ commit();ED.querySelectorAll(':scope>[data-note]').forEach(d=>{if(d.dataset.note===id)delete d.dataset.note});NT=NT.filter(n=>n.id!==id);commit()}
+function hookNote(id){
+ const d=last&&last.isConnected?last:null;if(!d)return;
+ if(d.dataset.note&&NT.some(n=>n.id===d.dataset.note)&&!confirm('Esta línea ya tiene una nota. ¿Cambiarla por esta? La que tiene pasará a notas sueltas.'))return;
+ commit();d.dataset.note=id;commit()}
+function nextNote(){
+ const L=[...ED.querySelectorAll(':scope>[data-note]')],d=cur()||last;if(!L.length)return;
+ const n=L.find(x=>d&&d.compareDocumentPosition(x)&Node.DOCUMENT_POSITION_FOLLOWING)||L[0];
+ ED.focus();caret(n,0);n.scrollIntoView({block:'center'})}
+function setMargin(on){mgOn=on;$('mgOn').checked=on;try{localStorage.setItem('guion:margen',on?'1':'0')}catch(_){}place()}
+// margin boxes: one per note, reused so typing in one is never interrupted; loose notes go to the panel
+function renderNotes(){
+ const box=$('notes'),old=new Map([...box.children].map(e=>[e.dataset.id,e])),on=new Set([...ED.querySelectorAll(':scope>[data-note]')].map(d=>d.dataset.note));
+ NT.forEach(n=>{let e=old.get(n.id);old.delete(n.id);
+  if(!e){e=document.createElement('div');e.className='nt';e.dataset.id=n.id;e.hidden=true;e.innerHTML='<textarea rows="2" aria-label="Nota"></textarea><button data-x aria-label="Borrar nota">✕</button>';box.append(e)}
+  const ta=e.firstChild;if(ta!==document.activeElement&&ta.value!==n.text)ta.value=n.text});
+ old.forEach(e=>e.remove());
+ const loose=NT.filter(n=>!on.has(n.id));
+ $('lNot').innerHTML=loose.map(n=>`<li data-n="${h(n.id)}"><span>${h(n.text||'(vacía)')}<br><b>estaba en: ${h(n.from||'(línea vacía)')}</b></span><button data-h aria-label="Enganchar a la línea del cursor">⤶</button><button data-x aria-label="Borrar nota">✕</button></li>`).join('')||'<p>Ninguna. Si borras una línea con nota, la nota aparece aquí.</p>';
+ place()}
+const place=()=>{if(!raf)raf=requestAnimationFrame(layoutNotes)};
+// wide screen: every note beside its line, pushed down if it would overlap the one above; narrow: only the cursor line's note, under it
+function layoutNotes(){
+ cancelAnimationFrame(raf);raf=0;
+ const box=$('notes'),m=wide()?mgOn?'mg':'off':'nar',E=new Map([...box.children].map(e=>[e.dataset.id,e]));
+ $('wrap').dataset.m=m;
+ const L=m==='off'?[]:[...ED.querySelectorAll(':scope>[data-note]')].filter(d=>E.has(d.dataset.note)&&(m==='mg'||d===last));
+ const show=new Set(L.map(d=>E.get(d.dataset.note)));E.forEach(e=>e.hidden=!show.has(e));
+ const P=L.map(d=>[E.get(d.dataset.note),m==='mg'?d.offsetTop:d.offsetTop+d.offsetHeight]),H=P.map(([e])=>e.offsetHeight);
+ let y=0;P.forEach(([e,t],i)=>{t=Math.max(t,y);e.style.top=t+'px';y=t+H[i]+6})}
+$('notes').addEventListener('input',ev=>{
+ const ta=ev.target,n=NT.find(x=>x.id===ta.parentNode.dataset.id);if(!n)return;
+ n.text=ta.value;if(!CSS.supports('field-sizing','content')){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px'}
+ changed();place()});
+$('notes').addEventListener('click',ev=>{if(ev.target.dataset.x!==undefined)delNote(ev.target.parentNode.dataset.id)});
+$('notes').addEventListener('keydown',ev=>{
+ if(ev.key!=='Escape')return;const d=lineOf(ev.target.parentNode.dataset.id);
+ if(d){ED.focus();caret(d,9e9)}});
+addEventListener('resize',place);
 PAN.addEventListener('change',ev=>{
+ if(ev.target.id==='mgOn'){setMargin(ev.target.checked);return}
  const d=last,v=ev.target.value;
  if(!ev.target.closest('#lSel')||!d||!d.isConnected||d.dataset.type!=='heading')return;
  commit();if(v)d.dataset.place=v;else delete d.dataset.place;commit()});
@@ -334,7 +406,9 @@ PAN.addEventListener('click',ev=>{
  const t=ev.target;
  if(t.dataset.t){PAN.dataset.t=t.dataset.t;PAN.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b===t));PAN.querySelectorAll('section').forEach(s=>s.hidden=s.dataset.s!==t.dataset.t);return}
  if(t.dataset.add!==undefined){addPlace();return}
+ if(t.dataset.nn!==undefined){noteHere();return}
  const li=t.closest('li');if(!li)return;
+ if(li.dataset.n!==undefined){if(t.dataset.x!==undefined)delNote(li.dataset.n);if(t.dataset.h!==undefined)hookNote(li.dataset.n);return}
  if(t.dataset.x!==undefined){delPlace(li.dataset.p,li.dataset.k);return}
  if(t.dataset.r!==undefined){
   const k=li.dataset.k;li.dataset.edit=1;
@@ -345,7 +419,7 @@ PAN.addEventListener('click',ev=>{
  if(li.dataset.p!==undefined){jump(li.dataset.p);return}
  goto(+li.dataset.i)});
 PAN.addEventListener('keydown',ev=>{
- if(ev.target.tagName!=='INPUT')return;
+ if(ev.target.tagName!=='INPUT'||ev.target.type==='checkbox')return;
  if(ev.target.id==='lugNew'){if(ev.key==='Enter'){ev.preventDefault();addPlace()}return}
  if(ev.key==='Enter'){ev.preventDefault();doRename(ev.target.closest('li'))}// else this Enter submits the mentions dialog
  if(ev.key==='Escape'){ev.target.blur();renderPanels()}});
@@ -389,27 +463,29 @@ SUG.addEventListener('pointerdown',ev=>{if(ev.target.dataset.v){ev.preventDefaul
 
 /* ---------- historial y guardado ---------- */
 function snap(){// each step keeps one string per line; unchanged lines reuse the previous step's string, so long scripts don't copy everything
- const k=JSON.stringify([TI.value,M,getCover(),PL]),pv=hist[pos];let L=rows().map(r=>JSON.stringify(r));
- if(pv&&pv.k===k&&pv.L.length===L.length&&L.every((x,j)=>x===pv.L[j]))return;
- if(pv){const m=new Map(pv.L.map(x=>[x,x]));L=L.map(x=>m.get(x)||x)}
+ const k=JSON.stringify([TI.value,M,getCover(),PL]),pv=hist[pos],same=(a,b)=>a.length===b.length&&a.every((x,j)=>x===b[j]);
+ let L=rows().map(r=>JSON.stringify(r)),N=NT.map(n=>JSON.stringify(n));// notes are kept the same way as lines
+ if(pv&&pv.k===k&&same(L,pv.L)&&same(N,pv.N))return;
+ if(pv){const m=new Map([...pv.L,...pv.N].map(x=>[x,x]));L=L.map(x=>m.get(x)||x);N=N.map(x=>m.get(x)||x)}
  const d=cur();let i=-1,o=0;
  if(d){i=[...ED.children].indexOf(d);const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setEnd(s.anchorNode,s.anchorOffset);o=r.toString().length}
- hist=hist.slice(0,pos+1);hist.push({k,L,i,o});pos++;
+ hist=hist.slice(0,pos+1);hist.push({k,L,N,i,o});pos++;
  if(hist.length>300){hist.shift();pos--}}
-function save(){const s=$('saved');if(other)return;try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:rows(),c:getCover(),p:PL}));s.textContent='Guardado';s.className=''}
+function save(){const s=$('saved');if(other)return;try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:rows(),c:getCover(),p:PL,n:NT}));s.textContent='Guardado';s.className=''}
  catch(_){s.textContent='No se pudo guardar: usa Archivo › Guardar .json';s.className='err'}}
-function commit(){clearTimeout(tm);tm=0;norm();snap();save();renderPanels()}
+function commit(){clearTimeout(tm);tm=0;norm();noteFrom();snap();save();renderPanels()}
 function changed(){clearTimeout(tm);tm=setTimeout(commit,400)}
-function load(t,m,L,c,p){
+function load(t,m,L,c,p,n){
  M=m;TI.value=t;MO.value=m;ED.dataset.mode=m;setCover(c);
  PL=Array.isArray(p)?p.filter(x=>x&&x.id&&x.n).map(x=>({id:String(x.id),n:String(x.n)})):[];jp={};
- ED.replaceChildren(...L.map(([ty,tx,pl])=>mk(conv(ty,m),String(tx).replace(/\n/g,' '),pl)));
+ NT=Array.isArray(n)?n.filter(x=>x&&x.id).map(x=>({id:String(x.id),text:String(x.text||''),from:String(x.from||'')})):[];
+ ED.replaceChildren(...L.map(([ty,tx,pl,nt])=>mk(conv(ty,m),String(tx).replace(/\n/g,' '),pl,nt)));
  if(!ED.children.length)ED.append(mk('heading',''));
  TIPO.innerHTML=CYC[m].map(t=>`<option value="${t}">${LABEL[t]}</option>`).join('');
  last=ED.firstChild;TIPO.value=last.dataset.type;
  renderPanels()}
 function restore(e){
- const[t,m,c,p]=JSON.parse(e.k);load(t,m,e.L.map(x=>JSON.parse(x)),c,p);save();
+ const[t,m,c,p]=JSON.parse(e.k);load(t,m,e.L.map(x=>JSON.parse(x)),c,p,e.N.map(x=>JSON.parse(x)));save();
  ED.focus();const d=ED.children[e.i];if(d)caret(d,e.o)}
 function undo(){commit();if(pos>0)restore(hist[--pos])}
 function redo(){if(pos<hist.length-1)restore(hist[++pos])}
@@ -441,6 +517,8 @@ ED.addEventListener('keydown',ev=>{
  if(mod&&k==='y'){ev.preventDefault();redo();return}
  const d=cur();if(!d)return;
  if(mod&&ev.code==='Space'){ev.preventDefault();const b=SUG.firstChild;if(b)applySug(b.dataset.v);return}
+ if(mod&&ev.altKey&&ev.code==='KeyM'){ev.preventDefault();noteHere(d);return}
+ if(mod&&ev.altKey&&ev.code==='KeyN'){ev.preventDefault();nextNote();return}
  if(ev.key==='Tab'){ev.preventDefault();cycle(d,ev.shiftKey?-1:1);return}
  if(ev.key==='Escape'&&d.dataset.ghost){esc=d;delete d.dataset.ghost;return}
  if(ev.key==='Escape'){free=true;return}
@@ -448,7 +526,7 @@ ED.addEventListener('keydown',ev=>{
  if(ev.key==='Enter'){ev.preventDefault();enter(d,ev.shiftKey)}});
 // a script wiped to one empty line starts again with a scene heading
 let nb=0;ED.addEventListener('beforeinput',()=>nb=ED.children.length);
-ED.addEventListener('input',()=>{esc=null;norm();if(nb>1&&ED.children.length===1&&!ED.textContent)setType(ED.firstChild,'heading');changed();sugg()});
+ED.addEventListener('input',()=>{esc=null;norm();if(nb>1&&ED.children.length===1&&!ED.textContent)setType(ED.firstChild,'heading');changed();sugg();if(NT.length)place()});
 ED.addEventListener('paste',ev=>{
  ev.preventDefault();const d=cur();if(!d)return;
  const p=ev.clipboardData.getData('text/plain').split(/\r?\n/);
@@ -463,7 +541,7 @@ ED.addEventListener('drop',ev=>ev.preventDefault());
 document.addEventListener('selectionchange',()=>{
  const d=cur();
  ED.querySelectorAll('.cur').forEach(x=>x!==d&&x.classList.remove('cur'));
- if(d){d.classList.add('cur');const ch=d!==last;last=d;if(ch)renderSel();if(CYC[M].includes(d.dataset.type))TIPO.value=d.dataset.type;sugg()}});
+ if(d){d.classList.add('cur');const ch=d!==last;last=d;if(ch){renderSel();if(NT.length)place()}if(CYC[M].includes(d.dataset.type))TIPO.value=d.dataset.type;sugg()}});
 TIPO.onchange=()=>{if(!last||!last.isConnected)return;ED.focus();caret(last,9e9);setType(last,TIPO.value);changed()};
 $('cyc').addEventListener('pointerdown',ev=>{ev.preventDefault();if(last&&last.isConnected)cycle(last,1)});
 TI.addEventListener('input',changed);
@@ -533,7 +611,7 @@ $('menu').addEventListener('click',ev=>{
  $('menu').open=false;
  if(a==='new'){if(confirm('¿Empezar un guion nuevo? Puedes recuperar el actual con Ctrl+Z.')){commit();load('Sin título',M,[]);commit()}}
  if(a==='open')$('fileIn').click();
- if(a==='json')dl(slug()+'.intdia.json',JSON.stringify({v:1,t:TI.value,m:M,l:rows(),c:getCover(),p:PL}),'application/json');
+ if(a==='json')dl(slug()+'.intdia.json',JSON.stringify({v:1,t:TI.value,m:M,l:rows(),c:getCover(),p:PL,n:NT}),'application/json');
  if(a==='fountain')dl(slug()+'.fountain',toFountain(),'text/plain');
  if(a==='cover')openCover();
  if(a==='print')print()});
@@ -541,13 +619,13 @@ $('fileIn').addEventListener('change',async ev=>{
  const f=ev.target.files[0];ev.target.value='';if(!f)return;
  const txt=await f.text();let d;
  try{d=/\.json$/i.test(f.name)?JSON.parse(txt):parseFountain(txt)}catch(_){alert('No se pudo leer el archivo.');return}
- commit();load(d.t||'Sin título',d.m==='teatro'?'teatro':'cine',d.l||[],d.c,d.p);commit()});
+ commit();load(d.t||'Sin título',d.m==='teatro'?'teatro':'cine',d.l||[],d.c,d.p,d.n);commit()});
 /* ---------- otras pestañas ---------- */
 // another tab saved: take its script if this one has no edits waiting; otherwise ask (other holds its version)
 function fromOther(v){
  clearTimeout(tm);tm=0;norm();snap();// this tab's version stays in undo
  const s=JSON.parse(v),d=cur(),i=d?[...ED.children].indexOf(d):-1;
- load(s.t||'Sin título',s.m==='teatro'?'teatro':'cine',s.l,s.c,s.p);snap();
+ load(s.t||'Sin título',s.m==='teatro'?'teatro':'cine',s.l,s.c,s.p,s.n);snap();
  const n=ED.children[Math.min(i,ED.children.length-1)];if(i>=0&&n)caret(n,0);
  $('saved').textContent='Actualizado desde otra pestaña';$('saved').className=''}
 addEventListener('storage',ev=>{
@@ -565,7 +643,9 @@ try{setTheme(localStorage.getItem('guion:theme')||'')}catch(_){}
 (function(){
  let d={t:'Sin título',m:'cine',l:DEMO};
  try{const s=JSON.parse(localStorage.getItem('guion:v1'));if(s&&Array.isArray(s.l))d=s}catch(_){}
- load(d.t,d.m==='teatro'?'teatro':'cine',d.l,d.c,d.p);snap()})();
+ try{mgOn=localStorage.getItem('guion:margen')!=='0'}catch(_){}
+ $('mgOn').checked=mgOn;
+ load(d.t,d.m==='teatro'?'teatro':'cine',d.l,d.c,d.p,d.n);snap()})();
 </script>
 </body>
 </html>
