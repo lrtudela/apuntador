@@ -147,6 +147,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <b>Tab</b> / <b>Mayús+Tab</b>: cambia el tipo de línea.<br>
    <b>Enter</b>: nueva línea con el tipo siguiente (tras personaje, diálogo; tras diálogo, personaje).<br>
    <b>Tab</b> en esa línea nueva: segunda opción (paréntesis tras personaje; acción o acotación tras diálogo).<br>
+   <b>Esc</b> y luego <b>Tab</b> / <b>Mayús+Tab</b>: sale del editor hacia el pie, o hacia el panel y el menú Archivo.<br>
    <b>Mayús+Enter</b>: nueva línea del mismo tipo (versos).<br>
    <b>Ctrl+Espacio</b>: autocompleta personaje.<br>
    Al escribir un personaje se propone en gris el más cercano: <b>Enter</b> lo acepta, <b>Esc</b> lo descarta.<br>
@@ -200,7 +201,7 @@ const NEXT={
 const ALT={cine:{character:'paren',dialogue:'action'},teatro:{character:'paren',dialogue:'stage'}};
 const HEAD=/^(INT\.?\/EXT|I\/E|INT|EXT)\.?\s+/i;
 const DEMO=[['heading','INT. COCINA - NOCHE'],['action','Una luz tenue sobre la mesa. ANA espera con el móvil en la mano.'],['character','ANA'],['dialogue','Dijo que vendría antes de las doce.'],['character','LUIS'],['paren','sin mirarla'],['dialogue','Siempre dice lo mismo.']];
-let M='cine',last=null,tm=0,other=null,hist=[],pos=-1,esc=null,fresh=null,PL=[],jp={};// PL: the author's places [{id,n}]; headings point to an id in data-place
+let M='cine',last=null,tm=0,other=null,hist=[],pos=-1,esc=null,free=false,fresh=null,PL=[],jp={};// PL: the author's places [{id,n}]; headings point to an id in data-place
 
 const h=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unparen=s=>s.replace(/^\(+|\)+$/g,'');
@@ -433,6 +434,8 @@ function coverHTML(c){
 
 /* ---------- eventos del editor ---------- */
 ED.addEventListener('keydown',ev=>{
+ if(ev.key==='Tab'&&free)return;// Esc then Tab leaves the editor (no keyboard trap)
+ if(!/^(Shift|Control|Alt|Meta)$/.test(ev.key))free=false;
  const mod=ev.ctrlKey||ev.metaKey,k=ev.key.toLowerCase();
  if(mod&&k==='z'){ev.preventDefault();ev.shiftKey?redo():undo();return}
  if(mod&&k==='y'){ev.preventDefault();redo();return}
@@ -440,6 +443,7 @@ ED.addEventListener('keydown',ev=>{
  if(mod&&ev.code==='Space'){ev.preventDefault();const b=SUG.firstChild;if(b)applySug(b.dataset.v);return}
  if(ev.key==='Tab'){ev.preventDefault();cycle(d,ev.shiftKey?-1:1);return}
  if(ev.key==='Escape'&&d.dataset.ghost){esc=d;delete d.dataset.ghost;return}
+ if(ev.key==='Escape'){free=true;return}
  if(ev.key==='ArrowRight'&&d.dataset.ghost&&!ev.shiftKey&&!mod){ev.preventDefault();applySug(SUG.firstChild.dataset.v);return}
  if(ev.key==='Enter'){ev.preventDefault();enter(d,ev.shiftKey)}});
 // a script wiped to one empty line starts again with a scene heading
@@ -454,6 +458,7 @@ ED.addEventListener('paste',ev=>{
   tail=t.toString();t.deleteContents();fix(d);p[p.length-1]+=tail}
  let at=d;p.slice(1).forEach(x=>{const nd=mk(d.dataset.type,x);at.after(nd);at=nd});
  if(at!==d)caret(at,at.textContent.length-tail.length);changed()});
+ED.addEventListener('blur',()=>free=false);
 ED.addEventListener('drop',ev=>ev.preventDefault());
 document.addEventListener('selectionchange',()=>{
  const d=cur();

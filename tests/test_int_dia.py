@@ -172,6 +172,29 @@ with sync_playwright() as pw:
     g.keyboard.press("Enter")
     check("Enter con propuesta deja lo escrito y crea la línea siguiente", texts(g)[-2] == "Luis" and types(g)[-1] == "dialogue", texts(g))
 
+    # 7a. Esc y Tab sacan el foco del editor
+    foc = lambda: g.evaluate("document.activeElement.id||document.activeElement.closest('#panel,#menu')?.id||document.activeElement.tagName")
+    g.evaluate("load('x','cine',[['character','LUISA'],['dialogue','a'],['character','']])")
+    g.click("#ed > div:last-child"); g.keyboard.type("Lu")
+    g.keyboard.press("Escape"); g.keyboard.press("Tab")
+    check("con propuesta, el primer Esc solo la descarta y Tab cambia el tipo", foc() == "ed" and types(g)[-1] == "dialogue", [foc(), types(g)])
+    g.keyboard.press("Escape"); g.keyboard.press("End"); g.keyboard.press("Tab")
+    check("otra tecla tras Esc devuelve Tab al cambio de tipo", foc() == "ed" and types(g)[-1] == "paren", [foc(), types(g)])
+    g.keyboard.press("Escape"); g.keyboard.press("Tab")
+    check("Esc y Tab llevan al pie sin cambiar el tipo", foc() == "tipo" and types(g)[-1] == "paren", [foc(), types(g)])
+    g.keyboard.press("Shift+Tab")
+    check("Mayús+Tab desde el pie vuelve al editor", foc() == "ed", foc())
+    g.keyboard.press("Escape"); g.keyboard.press("Shift+Tab")
+    check("Esc y Mayús+Tab llevan al panel", foc() == "panel", foc())
+    for _ in range(30):
+        if foc() == "menu": break
+        g.keyboard.press("Shift+Tab")
+    check("desde el panel se llega al menú Archivo", foc() == "menu", foc())
+    for _ in range(30):
+        if foc() == "ed": break
+        g.keyboard.press("Tab")
+    check("tabulando se vuelve al editor", foc() == "ed", foc())
+
     # 7b. renombrar con menciones en el texto
     g.evaluate("""load('x','cine',[['character','LUZ'],['dialogue','Luz, ven.'],['action','LUZ entra. Luz apaga la luz. LUZMARÍA mira.'],
       ['character','LUZ'],['paren','mira a Luz'],['dialogue','b'],['character','PEPE'],['dialogue','c']])""")
