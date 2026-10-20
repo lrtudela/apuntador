@@ -21,8 +21,9 @@ button,summary{cursor:pointer}
 button:hover,button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{border-color:var(--acc);outline:none}
 header{position:relative;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border-bottom:2px solid var(--ln);background:var(--paper)}
 #title{flex:1 1 140px;min-width:0;font-weight:700}
-#stat,#saved{color:var(--dim);font-size:.85rem}
-#saved.err{color:var(--acc);font-weight:700}
+#stat,#saved,#copy{color:var(--dim);font-size:.85rem}
+#saved.err,#copy.warn{color:var(--acc);font-weight:700}
+@media(max-width:480px){#copy[data-s]{font-size:0}#copy[data-s]::after{content:attr(data-s);font-size:.85rem}}
 #clash{color:var(--acc);font-weight:700;font-size:.85rem}
 details{position:static}
 summary{list-style:none;display:flex;align-items:center}
@@ -143,6 +144,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  </div></details>
  <span id="stat"></span>
  <span id="saved" aria-live="polite"></span>
+ <span id="copy"></span>
  <span id="clash" role="alert" hidden>Otra pestaña ha cambiado el guion. <button data-k="load">Cargar la suya</button> <button data-k="keep">Quedarme con esta</button></span>
 </header>
 <div id="main">
@@ -174,7 +176,8 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    Pulsa ✎ junto a un personaje para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.<br><br>
    <b>Lugares</b>: dalos de alta en su pestaña. Con el cursor en una cabecera, elige allí su lugar; el texto de la cabecera no cambia. Pulsa un lugar para ir a sus escenas, una tras otra. ✎ cambia su nombre y ✕ lo borra (sus escenas se quedan sin lugar).<br><br>
    <b>Notas</b>: <b>Ctrl+Alt+M</b> (o «Nota en esta línea» en su pestaña) crea la nota de la línea del cursor o va a la que tiene; <b>Esc</b> vuelve al guion. Se ven en el margen derecho y nunca se imprimen. <b>Ctrl+Alt+N</b> salta a la siguiente línea con nota. Las líneas con nota llevan una marca a la izquierda, también con el margen cerrado, y arriba se ve cuántas notas hay. En pantallas estrechas no hay margen: pon el cursor en la línea para ver su nota debajo. Si borras una línea, su nota no se pierde: pasa a «Notas sueltas», desde donde la enganchas a la línea del cursor (⤶) o la borras (✕).<br>
-   <b>Versiones</b>: en una nota, <b>+ versión</b> guarda una alternativa del texto de su línea (empieza siendo una copia, para que la edites). <b>⇄</b> la cambia por el texto de la línea, que pasa a ser una versión: no se pierde nada. Al exportar a Fountain, notas y versiones viajan como <code>[[nota: …]]</code> y <code>[[version: …]]</code>; las notas sueltas van al final.</p>
+   <b>Versiones</b>: en una nota, <b>+ versión</b> guarda una alternativa del texto de su línea (empieza siendo una copia, para que la edites). <b>⇄</b> la cambia por el texto de la línea, que pasa a ser una versión: no se pierde nada. Al exportar a Fountain, notas y versiones viajan como <code>[[nota: …]]</code> y <code>[[version: …]]</code>; las notas sueltas van al final.<br><br>
+   <b>Copia</b>: el guion se guarda solo en este navegador y se pierde si se borran sus datos. Arriba se ve cuándo hiciste la última copia en archivo (<b>Guardar .json</b> o <b>Exportar .fountain</b>): «Copia al día», «Copia: hace N días» si has cambiado algo desde entonces, o «Sin copia». Si pasan más de 7 días con cambios sin copiar, se resalta.</p>
   </section>
  </aside>
  <div id="wrap">
@@ -498,8 +501,23 @@ function snap(){// each step keeps one string per line; unchanged lines reuse th
  if(d){i=[...ED.children].indexOf(d);const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setEnd(s.anchorNode,s.anchorOffset);o=r.toString().length}
  hist=hist.slice(0,pos+1);hist.push({k,L,N,i,o});pos++;
  if(hist.length>300){hist.shift();pos--}}
-function save(){const s=$('saved');if(other)return;try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:rows(),c:getCover(),p:PL,n:NT}));s.textContent='Guardado';s.className=''}
+function save(){const s=$('saved');copyMark();if(other)return;try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:rows(),c:getCover(),p:PL,n:NT}));s.textContent='Guardado';s.className=''}
  catch(_){s.textContent='No se pudo guardar: usa Archivo › Guardar .json';s.className='err'}}
+// last copy to a file: cp={d,h}, d = its date (or the first change if never copied), h = hash of what was copied ('' = never)
+let cp=null;try{cp=JSON.parse(localStorage.getItem('guion:copia'))}catch(_){}
+function copyMark(copied){
+ const C=$('copy'),r=rows(),put=()=>{try{localStorage.setItem('guion:copia',JSON.stringify(cp))}catch(_){}};
+ let k=5381;for(const c of JSON.stringify([TI.value,M,r,getCover(),PL,NT]))k=(k*33^c.charCodeAt(0))|0;k=String(k>>>0);
+ if(copied){cp={d:Date.now(),h:k};put()}
+ else if(!r.some(x=>x[1].trim())||!NT.length&&r.length===DEMO.length&&r.every((x,i)=>x[0]===DEMO[i][0]&&unparen(x[1])===DEMO[i][1])){C.textContent='';delete C.dataset.s;C.className='';return}// nothing to lose
+ else if(!cp||!cp.d){cp={d:Date.now(),h:''};put()}
+ const n=Math.max(0,Math.floor((Date.now()-cp.d)/864e5)),ok=cp.h===k;
+ C.textContent=!cp.h?'Sin copia':ok?'Copia al día':'Copia: '+(n?n===1?'ayer':'hace '+n+' días':'hoy');
+ C.dataset.s=!cp.h?'Sin copia':ok?'Copia ✓':'Copia: '+(n?n+' d':'hoy');
+ C.title=ok?'':'Hay cambios sin copiar en archivo: Archivo › Guardar .json';
+ C.className=!ok&&n>7?'warn':''}
+setInterval(()=>copyMark(),36e5);
+addEventListener('storage',ev=>{if(ev.key==='guion:copia'){try{cp=JSON.parse(ev.newValue)}catch(_){}copyMark()}});
 function commit(){clearTimeout(tm);tm=0;norm();noteFrom();snap();save();renderPanels()}
 function changed(){clearTimeout(tm);tm=setTimeout(commit,400)}
 function load(t,m,L,c,p,n){
@@ -653,6 +671,7 @@ $('menu').addEventListener('click',ev=>{
  if(a==='open')$('fileIn').click();
  if(a==='json')dl(slug()+'.intdia.json',JSON.stringify({v:1,t:TI.value,m:M,l:rows(),c:getCover(),p:PL,n:NT}),'application/json');
  if(a==='fountain')dl(slug()+'.fountain',toFountain(),'text/plain');
+ if(a==='json'||a==='fountain'){commit();copyMark(true)}
  if(a==='cover')openCover();
  if(a==='print')print()});
 $('fileIn').addEventListener('change',async ev=>{
@@ -667,7 +686,7 @@ function fromOther(v){
  const s=JSON.parse(v),d=cur(),i=d?[...ED.children].indexOf(d):-1;
  load(s.t||'Sin título',s.m==='teatro'?'teatro':'cine',s.l,s.c,s.p,s.n);snap();
  const n=ED.children[Math.min(i,ED.children.length-1)];if(i>=0&&n)caret(n,0);
- $('saved').textContent='Actualizado desde otra pestaña';$('saved').className=''}
+ copyMark();$('saved').textContent='Actualizado desde otra pestaña';$('saved').className=''}
 addEventListener('storage',ev=>{
  if(ev.key!=='guion:v1'||!ev.newValue)return;
  try{if(!Array.isArray(JSON.parse(ev.newValue).l))return}catch(_){return}
@@ -685,7 +704,7 @@ try{setTheme(localStorage.getItem('guion:theme')||'')}catch(_){}
  try{const s=JSON.parse(localStorage.getItem('guion:v1'));if(s&&Array.isArray(s.l))d=s}catch(_){}
  try{mgOn=localStorage.getItem('guion:margen')!=='0'}catch(_){}
  $('mgOn').checked=mgOn;
- load(d.t,d.m==='teatro'?'teatro':'cine',d.l,d.c,d.p,d.n);snap()})();
+ load(d.t,d.m==='teatro'?'teatro':'cine',d.l,d.c,d.p,d.n);snap();copyMark()})();
 </script>
 </body>
 </html>

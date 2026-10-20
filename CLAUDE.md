@@ -22,6 +22,7 @@ Editor web de guiones para cine y teatro, inspirado en Fade In. Proyecto de port
 - Tab rota el tipo de línea, pero Esc y luego Tab (o Mayús+Tab) saca el foco del editor, para que no sea una trampa de teclado. Cualquier otra tecla o perder el foco anula la salida.
 - Formato de archivo: Fountain como puente con otros programas (en teatro, actos con `#` y `Mode: teatro` en la portada) y JSON propio. No se leen `.fadein` ni `.fdx`.
 - Portada (Archivo › Portada): sus datos viven en el formulario `#cover` (`getCover`/`setCover`), igual que el título vive en `#title`. Viajan en el autoguardado, el JSON (`c`), el historial y la portada Fountain (`Title`, `Credit`, `Author`, `Source`, `Revision`, `Draft date`, `Contact`, `Copyright`, `Notes`; valores de varias líneas sangrados). Email y teléfono van juntos en `Contact`, uno por línea; al leer un `Contact` (o el campo `contact` antiguo) se reparten con `contactParts` y el resto de líneas se descarta. La versión se imprime como «Versión N». Título y crédito vacíos usan el título del proyecto y «escrito por». Solo se imprime si está marcada «Imprimir portada».
+- Aviso de copia (`#copy`, `copyMark`): la última copia en archivo (Guardar .json o Exportar .fountain) se guarda en `guion:copia` como `{d,h}`: fecha y hash del contenido copiado (`h` vacío si nunca se copió; entonces `d` es el primer cambio). Hay cambios sin copiar si el hash actual es otro; con más de 7 días se resalta. La demo intacta y el guion vacío no avisan.
 - Autoguardado en `localStorage` con la clave `guion:v1`. No la cambies: se perderían los textos guardados en los navegadores. Si otra pestaña guarda, esta carga su versión si no tiene cambios pendientes; si los tiene, deja de guardar y pregunta (`#clash`).
 
 ## Cómo trabajar aquí
@@ -40,7 +41,7 @@ playwright install chromium
 python tests/test_int_dia.py
 ```
 
-Deben pasar todas y no haber errores de JS. Cubren: rotación de tipos con Tab, Enter por modo, autocompletado, renombrar personajes, lugares como etiquetas (alta, recuentos, renombrar, borrar, saltos), notas al margen (crear, deshacer, sueltas, unir y partir líneas, margen cerrado, impresión, móvil, versiones e intercambio, Fountain), ida y vuelta Fountain en cine y teatro, deshacer y rehacer, dos pestañas a la vez, y 360 px sin scroll horizontal. Las pruebas llaman a funciones globales de `index.html` (`lines`, `rows`, `analyze`, `toFountain`, `parseFountain`, `unparen`, `load`, `PL`, `NT`, `commit`, `renderPanels`) y a los elementos `ED` y `SUG`. Si renombras alguno, actualiza también las pruebas.
+Deben pasar todas y no haber errores de JS. Cubren: rotación de tipos con Tab, Enter por modo, autocompletado, renombrar personajes, lugares como etiquetas (alta, recuentos, renombrar, borrar, saltos), notas al margen (crear, deshacer, sueltas, unir y partir líneas, margen cerrado, impresión, móvil, versiones e intercambio, Fountain), aviso de copia (con reloj simulado), ida y vuelta Fountain en cine y teatro, deshacer y rehacer, dos pestañas a la vez, y 360 px sin scroll horizontal. Las pruebas llaman a funciones globales de `index.html` (`lines`, `rows`, `analyze`, `toFountain`, `parseFountain`, `unparen`, `load`, `PL`, `NT`, `commit`, `renderPanels`) y a los elementos `ED` y `SUG`. Si renombras alguno, actualiza también las pruebas.
 
 ## Pendiente y problemas conocidos
 
