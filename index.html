@@ -46,6 +46,8 @@ details>div select{flex:1}
 #panel li input{flex:1;min-width:0}
 #panel p{color:var(--dim);font-size:.9rem}
 #panel li.none{color:var(--dim)}
+#panel li button.on{border-color:var(--acc);color:var(--acc)}
+#sheet textarea{background:var(--bg);color:var(--fg);min-height:10em;max-height:60dvh}
 #lSel label{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
 #lSel select{width:100%}
 #panel .add{display:flex;gap:6px;margin-top:8px}
@@ -86,13 +88,13 @@ dialog h2{margin:0 0 8px;font-size:1.1rem;color:var(--acc)}
 dialog form{display:flex;flex-direction:column;gap:8px}
 #cover label,#role label{display:flex;flex-direction:column;gap:2px;color:var(--dim)}
 #cover input,#cover textarea{background:var(--bg);color:var(--fg)}
-#cover textarea{font:inherit;border:2px solid var(--ln);padding:.3rem .6rem;resize:vertical}
-#cover textarea:focus-visible{border-color:var(--acc);outline:none}
+#cover textarea,#sheet textarea{font:inherit;border:2px solid var(--ln);padding:.3rem .6rem;resize:vertical}
+#cover textarea:focus-visible,#sheet textarea:focus-visible{border-color:var(--acc);outline:none}
 #cover .chk,#role .chk{flex-direction:row;align-items:center;color:var(--fg)}
 #cover .chk input,#role .chk input{min-height:0;width:22px;height:22px;accent-color:var(--acc)}
 dialog .act{display:flex;gap:6px}
 dialog .act button{flex:1}
-#ment p,#role p{margin:0;color:var(--dim)}
+#ment p,#role p,#sheet p{margin:0;color:var(--dim)}
 #ment ul{list-style:none;margin:0;padding:0;max-height:50dvh;overflow:auto}
 #ment label{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--ln);overflow-wrap:anywhere}
 #ment input{flex:none;width:22px;height:22px;margin:0;accent-color:var(--acc)}
@@ -196,7 +198,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <button data-t="ayu">?</button>
   </nav>
   <section data-s="esc"><ul id="lEsc"></ul></section>
-  <section data-s="per" hidden><ul id="lPer"></ul></section>
+  <section data-s="per" hidden><ul id="lPer"></ul><h3 id="hFic" hidden>Fichas sin personaje</h3><ul id="lFic"></ul></section>
   <section data-s="lug" hidden><div id="lSel"></div><ul id="lLug"></ul>
    <div class="add"><input id="lugNew" placeholder="Nuevo lugar" aria-label="Nuevo lugar"><button data-add>Añadir</button></div></section>
   <section data-s="not" hidden><button data-nn>Nota en esta línea</button>
@@ -213,7 +215,8 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <b>Ctrl+Espacio</b>: autocompleta personaje.<br>
    Al escribir un personaje se propone en gris el más cercano: <b>Tab</b> (o la <b>flecha derecha</b>) lo acepta, <b>Enter</b> confirma lo escrito, <b>Esc</b> lo descarta. En el móvil, <b>⇥</b> hace lo mismo que Tab.<br>
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
-   Pulsa ✎ junto a un personaje para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.<br><br>
+   Pulsa ✎ junto a un personaje para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.<br>
+   <b>Fichas</b>: ¶ junto a un personaje abre su ficha, un texto libre para apuntar quién es, qué quiere o sus relaciones; se resalta si ya tiene. Al renombrar, la ficha pasa al nombre nuevo; al fusionar, se juntan los dos textos. Si un personaje desaparece del texto, su ficha sigue en «Fichas sin personaje», donde puedes leerla o borrarla (✕). No se imprimen. Viajan en el .json y también en Fountain, al final del archivo, como <code>[[ficha NOMBRE: …]]</code>; otros programas las ignoran como cualquier nota.<br><br>
    <b>Presencias</b>: tabla con los personajes en filas y las escenas en columnas; ● marca las escenas en que habla cada uno (si solo se le nombra, no cuenta), y el número junto a cada nombre dice en cuántas escenas está. Pulsa un número o una celda para ir a esa escena. Sirve para planificar ensayos y repartir papeles. Para llevarla en papel, <b>Archivo › Tabla de presencias</b>: sale apaisada, en bloques de 25 escenas, con la lista de cabeceras debajo.<br><br>
    <b>Lugares</b>: dalos de alta en su pestaña. Con el cursor en una cabecera, elige allí su lugar; el texto de la cabecera no cambia. Pulsa un lugar para ir a sus escenas, una tras otra. ✎ cambia su nombre y ✕ lo borra (sus escenas se quedan sin lugar).<br><br>
    <b>Notas</b>: <b>Ctrl+Alt+M</b> (o «Nota en esta línea» en su pestaña) crea la nota de la línea del cursor o va a la que tiene; <b>Esc</b> vuelve al guion. Se ven en el margen derecho y nunca se imprimen. <b>Ctrl+Alt+N</b> salta a la siguiente línea con nota. Las líneas con nota llevan una marca a la izquierda, también con el margen cerrado, y arriba se ve cuántas notas hay. En pantallas estrechas no hay margen: pon el cursor en la línea para ver su nota debajo. Si borras una línea, su nota no se pierde: pasa a «Notas sueltas», desde donde la enganchas a la línea del cursor (⤶) o la borras (✕).<br>
@@ -257,6 +260,12 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
  <ul id="mlist"></ul>
  <div class="act"><button value="ok">Renombrar</button><button value="">Cancelar</button></div>
 </form></dialog>
+<dialog id="sheet" aria-labelledby="shh"><form method="dialog">
+ <h2 id="shh">Ficha</h2>
+ <p>Quién es, qué quiere, sus relaciones…</p>
+ <textarea name="t" rows="8" aria-label="Ficha"></textarea>
+ <div class="act"><button value="ok">Guardar</button><button value="">Cancelar</button></div>
+</form></dialog>
 <dialog id="role" aria-labelledby="rlh"><form method="dialog">
  <h2 id="rlh">Papel del actor</h2>
  <p>Imprime solo las intervenciones del personaje, cada una con su pie: la última línea de diálogo de quien habla antes.</p>
@@ -277,9 +286,10 @@ const NEXT={
 const ALT={cine:{character:'paren',dialogue:'action'},teatro:{character:'paren',dialogue:'stage'}};
 const HEAD=/^(INT\.?\/EXT|I\/E|INT|EXT)\.?\s+/i;
 const DEMO=[['heading','INT. COCINA - NOCHE'],['action','Una luz tenue sobre la mesa. ANA espera con el móvil en la mano.'],['character','ANA'],['dialogue','Dijo que vendría antes de las doce.'],['character','LUIS'],['paren','sin mirarla'],['dialogue','Siempre dice lo mismo.']];
-let M='cine',last=null,tm=0,other=null,hist=[],pos=-1,esc=null,free=false,fresh=null,PL=[],jp={},NT=[],mgOn=true,raf=0;// PL: the author's places [{id,n}]; headings point to an id in data-place
+let M='cine',last=null,tm=0,other=null,hist=[],pos=-1,esc=null,free=false,fresh=null,PL=[],jp={},NT=[],CH=[],mgOn=true,raf=0;// PL: the author's places [{id,n}]; headings point to an id in data-place
 // NT: notes [{id,text,from,versions}]; any line may point to one in data-note. A note outlives its line (loose); from = start of its last line;
 // versions = other texts for its line (without the brackets of a paren line)
+// CH: character sheets [{n,t}], n = the name as key() gives it; a sheet stays when its name leaves the text
 
 const h=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unparen=s=>s.replace(/^\(+|\)+$/g,'');
@@ -353,8 +363,10 @@ function renderPanels(){
  if(PAN.contains(a)&&a.tagName==='INPUT'&&a.closest('li'))return;
  const A=analyze();
  $('lEsc').innerHTML=A.scenes.map(s=>`<li data-i="${s.i}"${s.act?' class="act"':''}><span>${h(s.label)}</span></li>`).join('')||'<p>Sin escenas todavía.</p>';
- const row=([k,v])=>`<li data-i="${v.first}" data-k="${h(k)}"><span>${h(k)}</span><b>${v.n||''}</b><button data-r aria-label="Renombrar ${h(k)}">✎</button></li>`;
+ const row=([k,v])=>`<li data-i="${v.first}" data-k="${h(k)}"><span>${h(k)}</span><b>${v.n||''}</b><button data-f${sheetOf(k)?' class="on"':''} aria-label="Ficha de ${h(k)}">¶</button><button data-r aria-label="Renombrar ${h(k)}">✎</button></li>`;
  $('lPer').innerHTML=[...A.chars].sort((a,b)=>b[1].n-a[1].n).map(row).join('')||'<p>Sin personajes todavía.</p>';
+ const gone=CH.filter(c=>!A.chars.has(c.n));$('hFic').hidden=!gone.length;
+ $('lFic').innerHTML=gone.map(c=>`<li data-c="${h(c.n)}" class="none"><span>${h(c.n)}</span><button data-f class="on" aria-label="Ficha de ${h(c.n)}">¶</button><button data-x aria-label="Borrar la ficha de ${h(c.n)}">✕</button></li>`).join('');
  $('lLug').innerHTML=(PL.map(p=>`<li data-p="${h(p.id)}" data-k="${h(p.n)}"><span>${h(p.n)}</span><b>${(A.places[p.id]||[]).length}</b><button data-r aria-label="Renombrar ${h(p.n)}">✎</button><button data-x aria-label="Borrar ${h(p.n)}">✕</button></li>`).join('')||'<p>Sin lugares todavía.</p>')
   +(A.none.length?`<li data-p="" class="none"><span>${A.none.length} escena${A.none.length>1?'s':''} sin lugar</span></li>`:'');
  $('tPre').innerHTML=presTable(A);
@@ -386,7 +398,22 @@ function rename(kind,old,nw,pick=[]){
   const t=d.textContent,ty=d.dataset.type;let j=0;
   if(kind==='per'&&ty==='character'&&key(t)===old)set(d,nw+((t.match(/\s*\(.*\)\s*$/)||[''])[0]));
   if(kind==='per'&&MENT.includes(ty)&&pick.length){const s=t.replace(re,m=>pick.includes(i+':'+j++)?caseLike(m,nw):m);if(s!==t)set(d,s)}});
+ const a=kind==='per'&&sheetOf(old),b=sheetOf(nw);
+ if(a&&b){b.t+='\n\n'+a.t;CH=CH.filter(x=>x!==a)}else if(a)a.n=nw;
  commit()}
+/* ---------- fichas: un texto libre por personaje, ligado a su nombre ---------- */
+const sheetOf=n=>CH.find(c=>c.n===n);
+// empty text = no sheet
+function setSheet(n,t){
+ const c=sheetOf(n);t=t.trim()?t.trimEnd():'';
+ if((c?c.t:'')===t)return;
+ commit();if(!t)CH=CH.filter(x=>x!==c);else if(c)c.t=t;else CH.push({n,t});commit()}
+function openSheet(n){
+ const D=$('sheet'),ta=D.querySelector('textarea');
+ $('shh').textContent='Ficha de '+n;ta.value=sheetOf(n)?.t||'';
+ D.returnValue='';D.showModal();ta.focus();
+ D.onclose=()=>{if(D.returnValue==='ok')setSheet(n,ta.value)}}
+function delSheet(n){if(confirm(`¿Borrar la ficha de «${n}»?`))setSheet(n,'')}
 /* ---------- lugares: lista del autor; cada cabecera apunta a un id ---------- */
 const placeBy=n=>PL.find(p=>p.n.toUpperCase()===n.toUpperCase());
 const tagged=id=>[...ED.children].filter(d=>d.dataset.place===id);
@@ -500,6 +527,8 @@ PAN.addEventListener('click',ev=>{
  if(t.dataset.g){goto(+t.dataset.g);return}
  const li=t.closest('li');if(!li)return;
  if(li.dataset.n!==undefined){if(t.dataset.x!==undefined)delNote(li.dataset.n);if(t.dataset.h!==undefined)hookNote(li.dataset.n);return}
+ if(li.dataset.c!==undefined){if(t.dataset.x!==undefined)delSheet(li.dataset.c);else openSheet(li.dataset.c);return}
+ if(t.dataset.f!==undefined){openSheet(li.dataset.k);return}
  if(t.dataset.x!==undefined){delPlace(li.dataset.p,li.dataset.k);return}
  if(t.dataset.r!==undefined){
   const k=li.dataset.k;li.dataset.edit=1;
@@ -555,22 +584,22 @@ SUG.addEventListener('pointerdown',ev=>{if(ev.target.dataset.v){ev.preventDefaul
 /* ---------- historial y guardado ---------- */
 function snap(){// each step keeps one string per line; unchanged lines reuse the previous step's string, so long scripts don't copy everything
  const k=JSON.stringify([TI.value,M,getCover(),PL]),pv=hist[pos],same=(a,b)=>a.length===b.length&&a.every((x,j)=>x===b[j]);
- let L=rows().map(r=>JSON.stringify(r)),N=NT.map(n=>JSON.stringify(n));// notes are kept the same way as lines
- if(pv&&pv.k===k&&same(L,pv.L)&&same(N,pv.N))return;
- if(pv){const m=new Map([...pv.L,...pv.N].map(x=>[x,x]));L=L.map(x=>m.get(x)||x);N=N.map(x=>m.get(x)||x)}
+ let L=rows().map(r=>JSON.stringify(r)),N=NT.map(n=>JSON.stringify(n)),C=CH.map(c=>JSON.stringify(c));// notes and sheets are kept the same way as lines
+ if(pv&&pv.k===k&&same(L,pv.L)&&same(N,pv.N)&&same(C,pv.C))return;
+ if(pv){const m=new Map([...pv.L,...pv.N,...pv.C].map(x=>[x,x]));L=L.map(x=>m.get(x)||x);N=N.map(x=>m.get(x)||x);C=C.map(x=>m.get(x)||x)}
  const d=cur();let i=-1,o=0;
  if(d){i=[...ED.children].indexOf(d);const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setEnd(s.anchorNode,s.anchorOffset);o=r.toString().length}
- hist=hist.slice(0,pos+1);hist.push({k,L,N,i,o});pos++;
+ hist=hist.slice(0,pos+1);hist.push({k,L,N,C,i,o});pos++;
  if(hist.length>300){hist.shift();pos--}}
-function save(){const s=$('saved');copyMark();if(other)return;try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:rows(),c:getCover(),p:PL,n:NT}));s.textContent='Guardado';s.className=''}
+function save(){const s=$('saved');copyMark();if(other)return;try{localStorage.setItem('guion:v1',JSON.stringify({t:TI.value,m:M,l:rows(),c:getCover(),p:PL,n:NT,ch:CH}));s.textContent='Guardado';s.className=''}
  catch(_){s.textContent='No se pudo guardar: usa Archivo › Guardar .json';s.className='err'}}
 // last copy to a file: cp={d,h}, d = its date (or the first change if never copied), h = hash of what was copied ('' = never)
 let cp=null;try{cp=JSON.parse(localStorage.getItem('guion:copia'))}catch(_){}
 function copyMark(copied){
  const C=$('copy'),r=rows(),put=()=>{try{localStorage.setItem('guion:copia',JSON.stringify(cp))}catch(_){}};
- let k=5381;for(const c of JSON.stringify([TI.value,M,r,getCover(),PL,NT]))k=(k*33^c.charCodeAt(0))|0;k=String(k>>>0);
+ let k=5381;for(const c of JSON.stringify([TI.value,M,r,getCover(),PL,NT,CH]))k=(k*33^c.charCodeAt(0))|0;k=String(k>>>0);
  if(copied){cp={d:Date.now(),h:k};put()}
- else if(!r.some(x=>x[1].trim())||!NT.length&&r.length===DEMO.length&&r.every((x,i)=>x[0]===DEMO[i][0]&&unparen(x[1])===DEMO[i][1])){C.textContent='';delete C.dataset.s;C.className='';return}// nothing to lose
+ else if(!r.some(x=>x[1].trim())||!NT.length&&!CH.length&&r.length===DEMO.length&&r.every((x,i)=>x[0]===DEMO[i][0]&&unparen(x[1])===DEMO[i][1])){C.textContent='';delete C.dataset.s;C.className='';return}// nothing to lose
  else if(!cp||!cp.d){cp={d:Date.now(),h:''};put()}
  const n=Math.max(0,Math.floor((Date.now()-cp.d)/864e5)),ok=cp.h===k;
  C.textContent=!cp.h?'Sin copia':ok?'Copia al día':'Copia: '+(n?n===1?'ayer':'hace '+n+' días':'hoy');
@@ -581,17 +610,18 @@ setInterval(()=>copyMark(),36e5);
 addEventListener('storage',ev=>{if(ev.key==='guion:copia'){try{cp=JSON.parse(ev.newValue)}catch(_){}copyMark()}});
 function commit(){clearTimeout(tm);tm=0;norm();noteFrom();snap();save();renderPanels()}
 function changed(){clearTimeout(tm);tm=setTimeout(commit,400)}
-function load(t,m,L,c,p,n){
+function load(t,m,L,c,p,n,ch){
  M=m;TI.value=t;MO.value=m;ED.dataset.mode=m;setCover(c);
  PL=Array.isArray(p)?p.filter(x=>x&&x.id&&x.n).map(x=>({id:String(x.id),n:String(x.n)})):[];jp={};
  NT=Array.isArray(n)?n.filter(x=>x&&x.id).map(x=>({id:String(x.id),text:String(x.text||''),from:String(x.from||''),versions:Array.isArray(x.versions)?x.versions.map(String):[]})):[];
+ CH=Array.isArray(ch)?ch.filter(x=>x&&x.n&&x.t).map(x=>({n:key(String(x.n)),t:String(x.t)})):[];
  ED.replaceChildren(...L.map(([ty,tx,pl,nt])=>mk(conv(ty,m),String(tx).replace(/\n/g,' '),pl,nt)));
  if(!ED.children.length)ED.append(mk('heading',''));
  TIPO.innerHTML=CYC[m].map(t=>`<option value="${t}">${LABEL[t]}</option>`).join('');
  last=ED.firstChild;TIPO.value=last.dataset.type;
  renderPanels()}
 function restore(e){
- const[t,m,c,p]=JSON.parse(e.k);load(t,m,e.L.map(x=>JSON.parse(x)),c,p,e.N.map(x=>JSON.parse(x)));save();
+ const[t,m,c,p]=JSON.parse(e.k);load(t,m,e.L.map(x=>JSON.parse(x)),c,p,e.N.map(x=>JSON.parse(x)),e.C.map(x=>JSON.parse(x)));save();
  ED.focus();const d=ED.children[e.i];if(d)caret(d,e.o)}
 function undo(){commit();if(pos>0)restore(hist[--pos])}
 function redo(){if(pos<hist.length-1)restore(hist[++pos])}
@@ -726,13 +756,17 @@ function toFountain(){
   const cont=(l.type==='paren'||l.type==='dialogue')&&(prev==='character'||prev==='paren'||prev==='dialogue');
   o+=(cont?'':'\n')+s+'\n';prev=l.type});
  NT.filter(n=>!used.has(n.id)).forEach(n=>o+='\n'+noteTags(n)+'\n');// loose notes (or on an empty line) go at the end, one paragraph each
+ CH.forEach(c=>o+='\n'+tag('ficha '+c.n,c.t)+'\n');// character sheets too, after the notes
  return o}
 // a blank line would end the note in Fountain, so it carries two spaces
-const noteTags=n=>[['nota',n.text],...n.versions.map(v=>['version',v])].map(([k,v])=>`[[${k}: ${v.replace(/\]\]/g,'] ]').replace(/\n(?=\n|$)/g,'\n  ')}]]`).join(' ');
+const tag=(k,v)=>`[[${k}: ${v.replace(/\]\]/g,'] ]').replace(/\n(?=\n|$)/g,'\n  ')}]]`;
+const noteTags=n=>[['nota',n.text],...n.versions.map(v=>['version',v])].map(([k,v])=>tag(k,v)).join(' ');
 function parseFountain(src){
  // [[lugar: …]] tags its heading; [[nota: …]], [[version: …]] and any other note go to the note of their line;
  // a line with only notes is a loose note. Notes may span lines, so they are swapped for a token before splitting
  src=src.replace(/\r/g,'').replace(/\/\*[\s\S]*?\*\//g,'');
+ // [[ficha NAME: …]] is a character sheet, wherever it is; the same name twice joins both texts
+ const C=[];src=src.replace(/\[\[\s*ficha\s+([^:\]]+?)\s*:\s?([\s\S]*?)\]\]/gi,(_,n,t)=>{t=t.split('\n').map(x=>x.trim()?x:'').join('\n');n=key(n);const o=C.find(c=>c.n===n);if(o)o.t+='\n\n'+t;else C.push({n,t});return''});
  const NB=[],N=[];src=src.replace(/\[\[(?!\s*lugar:)([\s\S]*?)\]\]/gi,(_,b)=>'\u0001'+(NB.push(b.split('\n').map(x=>x.trim()?x:'').join('\n'))-1)+'\u0001');
  const R=src.split('\n'),meta={},out=[],P=[];let i=0,B=[];
  const pid=n=>{if(!n)return;let p=P.find(x=>x.n.toUpperCase()===n.toUpperCase());if(!p)P.push(p={id:String(P.length+1),n});return p.id};
@@ -762,7 +796,7 @@ function parseFountain(src){
   blank=false}
  const c={credit:meta.credit,author:meta.author||meta.authors,source:meta.source,version:meta.revision,date:meta['draft date']||meta.date,...contactParts(meta.contact||''),copyright:meta.copyright,notes:meta.notes};
  c.on=Object.values(c).some(Boolean);
- return{t:(meta.title||'Sin título').replace(/\n/g,' '),m:teatro?'teatro':'cine',l:out,c,p:P,n:N}}
+ return{t:(meta.title||'Sin título').replace(/\n/g,' '),m:teatro?'teatro':'cine',l:out,c,p:P,n:N,ch:C}}
 
 /* ---------- menú Archivo ---------- */
 function dl(name,text,type){
@@ -779,7 +813,7 @@ $('menu').addEventListener('click',ev=>{
  $('menu').open=false;
  if(a==='new'){if(confirm('¿Empezar un guion nuevo? Puedes recuperar el actual con Ctrl+Z.')){commit();load('Sin título',M,[]);commit()}}
  if(a==='open')$('fileIn').click();
- if(a==='json')dl(slug()+'.intdia.json',JSON.stringify({v:1,t:TI.value,m:M,l:rows(),c:getCover(),p:PL,n:NT}),'application/json');
+ if(a==='json')dl(slug()+'.intdia.json',JSON.stringify({v:1,t:TI.value,m:M,l:rows(),c:getCover(),p:PL,n:NT,ch:CH}),'application/json');
  if(a==='fountain')dl(slug()+'.fountain',toFountain(),'text/plain');
  if(a==='json'||a==='fountain'){commit();copyMark(true)}
  if(a==='cover')openCover();
@@ -790,13 +824,13 @@ $('fileIn').addEventListener('change',async ev=>{
  const f=ev.target.files[0];ev.target.value='';if(!f)return;
  const txt=await f.text();let d;
  try{d=/\.json$/i.test(f.name)?JSON.parse(txt):parseFountain(txt)}catch(_){alert('No se pudo leer el archivo.');return}
- commit();load(d.t||'Sin título',d.m==='teatro'?'teatro':'cine',d.l||[],d.c,d.p,d.n);commit()});
+ commit();load(d.t||'Sin título',d.m==='teatro'?'teatro':'cine',d.l||[],d.c,d.p,d.n,d.ch);commit()});
 /* ---------- otras pestañas ---------- */
 // another tab saved: take its script if this one has no edits waiting; otherwise ask (other holds its version)
 function fromOther(v){
  clearTimeout(tm);tm=0;norm();snap();// this tab's version stays in undo
  const s=JSON.parse(v),d=cur(),i=d?[...ED.children].indexOf(d):-1;
- load(s.t||'Sin título',s.m==='teatro'?'teatro':'cine',s.l,s.c,s.p,s.n);snap();
+ load(s.t||'Sin título',s.m==='teatro'?'teatro':'cine',s.l,s.c,s.p,s.n,s.ch);snap();
  const n=ED.children[Math.min(i,ED.children.length-1)];if(i>=0&&n)caret(n,0);
  copyMark();$('saved').textContent='Actualizado desde otra pestaña';$('saved').className=''}
 addEventListener('storage',ev=>{
@@ -816,7 +850,7 @@ try{setTheme(localStorage.getItem('guion:theme')||'')}catch(_){}
  try{const s=JSON.parse(localStorage.getItem('guion:v1'));if(s&&Array.isArray(s.l))d=s}catch(_){}
  try{mgOn=localStorage.getItem('guion:margen')!=='0'}catch(_){}
  $('mgOn').checked=mgOn;
- load(d.t,d.m==='teatro'?'teatro':'cine',d.l,d.c,d.p,d.n);snap();copyMark()})();
+ load(d.t,d.m==='teatro'?'teatro':'cine',d.l,d.c,d.p,d.n,d.ch);snap();copyMark()})();
 </script>
 </body>
 </html>
