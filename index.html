@@ -181,6 +181,9 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   <label>Tema <select id="theme">
    <option value="">Verde terminal</option><option value="papel">Papel</option><option value="ambar">Ámbar</option><option value="sepia">Sepia nocturna</option><option value="azul">Azul noche</option><option value="salvia">Verde salvia</option><option value="vapor">Vaporwave</option>
   </select></label>
+  <label>Enter <select id="route">
+   <option value="">Diálogo → personaje</option><option value="accion">Diálogo → acción</option><option value="paren">Personaje → paréntesis</option>
+  </select></label>
  </div></details>
  <span id="stat"></span>
  <span id="saved" aria-live="polite"></span>
@@ -208,8 +211,8 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
   <section data-s="ayu" hidden>
    <p><b>INT. DÍA</b> · editor de guion para cine y teatro<br><br>
    <b>Tab</b> / <b>Mayús+Tab</b>: cambia el tipo de línea.<br>
-   <b>Enter</b>: nueva línea con el tipo siguiente (tras personaje, diálogo; tras diálogo, personaje).<br>
-   <b>Tab</b> en esa línea nueva: segunda opción (paréntesis tras personaje; acción o acotación tras diálogo).<br>
+   <b>Enter</b>: nueva línea con el tipo siguiente, según el itinerario que elijas en <b>Archivo › Enter</b>. Por defecto, tras personaje va diálogo y tras diálogo, personaje. Con «Diálogo → acción», tras diálogo va acción (acotación en teatro); con «Personaje → paréntesis», tras personaje va paréntesis. El itinerario es tuyo, no del guion: vale para todos.<br>
+   <b>Tab</b> en esa línea nueva: la otra opción (por defecto, paréntesis tras personaje y acción o acotación tras diálogo; con otro itinerario, la que antes daba Enter).<br>
    <b>Esc</b> y luego <b>Tab</b> / <b>Mayús+Tab</b>: sale del editor hacia el pie, o hacia el panel y el menú Archivo.<br>
    <b>Mayús+Enter</b>: nueva línea del mismo tipo (versos).<br>
    <b>Ctrl+Espacio</b>: autocompleta personaje.<br>
@@ -284,6 +287,9 @@ const NEXT={
  teatro:{stage:'character',act:'heading',heading:'stage',character:'dialogue',paren:'dialogue',dialogue:'character'}};
 // second choice: first Tab on the empty line Enter just created
 const ALT={cine:{character:'paren',dialogue:'action'},teatro:{character:'paren',dialogue:'stage'}};
+// Enter itinerary (user setting in guion:enter): the chosen one swaps NEXT and ALT for one type
+const SWAP={accion:'dialogue',paren:'character'};let ROUTE='';
+const nextOf=t=>(SWAP[ROUTE]===t?ALT:NEXT)[M][t],altOf=t=>(SWAP[ROUTE]===t?NEXT:ALT)[M][t];
 const HEAD=/^(INT\.?\/EXT|I\/E|INT|EXT)\.?\s+/i;
 const DEMO=[['heading','INT. COCINA - NOCHE'],['action','Una luz tenue sobre la mesa. ANA espera con el móvil en la mano.'],['character','ANA'],['dialogue','Dijo que vendría antes de las doce.'],['character','LUIS'],['paren','sin mirarla'],['dialogue','Siempre dice lo mismo.']];
 let M='cine',last=null,tm=0,other=null,hist=[],pos=-1,esc=null,free=false,fresh=null,PL=[],jp={},NT=[],CH=[],mgOn=true,raf=0;// PL: the author's places [{id,n}]; headings point to an id in data-place
@@ -331,20 +337,20 @@ function setType(d,t){
  else if(was==='paren'&&t!=='paren'){set(d,unparen(d.textContent));caret(d,9e9)}
  TIPO.value=t}
 function cycle(d,dir){
- const L=CYC[M],p=d.previousElementSibling,a=p&&ALT[M][p.dataset.type];let i=L.indexOf(d.dataset.type);
- if(dir>0&&d===fresh&&a&&!d.textContent){fresh=null;setType(d,a);changed();return}
+ const L=CYC[M],p=d.previousElementSibling,a=p&&altOf(p.dataset.type);let i=L.indexOf(d.dataset.type);
+ if(dir>0&&d===fresh&&a&&!unparen(d.textContent)){fresh=null;setType(d,a);changed();return}
  fresh=null;
  i=i<0?0:(i+dir+L.length)%L.length;setType(d,L[i]);changed()}
 function enter(d,same){
  const s=getSelection();let r=s.getRangeAt(0);
  if(d.dataset.type==='paren'){
-  const nd=mk(same?'paren':NEXT[M].paren,'');d.after(nd);caret(nd,same?1:0);changed();return}
+  const nd=mk(same?'paren':nextOf('paren'),'');d.after(nd);caret(nd,same?1:0);changed();return}
  if(!r.collapsed){r.deleteContents();r=s.getRangeAt(0)}
  const t=document.createRange();t.selectNodeContents(d);t.setStart(r.endContainer,r.endOffset);
  const tail=t.toString();t.deleteContents();fix(d);
  if(!d.textContent&&tail){set(d,tail);d.before(mk(d.dataset.type,''));caret(d,0);changed();return}
- const nd=mk(same?d.dataset.type:NEXT[M][d.dataset.type]||defType(),tail);
- d.after(nd);caret(nd,0);nd.scrollIntoView({block:'nearest'});fresh=same?null:nd;changed()}
+ const nd=mk(same?d.dataset.type:nextOf(d.dataset.type)||defType(),tail);
+ d.after(nd);caret(nd,nd.dataset.type==='paren'?1:0);nd.scrollIntoView({block:'nearest'});fresh=same?null:nd;changed()}
 
 /* ---------- análisis ---------- */
 function analyze(skip){
@@ -808,6 +814,10 @@ function setTheme(t){
  if(t)document.documentElement.dataset.theme=t;else delete document.documentElement.dataset.theme;
  try{localStorage.setItem('guion:theme',t)}catch(_){}}
 $('theme').onchange=ev=>setTheme(ev.target.value);
+function setRoute(v){
+ const S=$('route');S.value=v;if(S.value!==v)v=S.value='';ROUTE=v;
+ try{localStorage.setItem('guion:enter',v)}catch(_){}}
+$('route').onchange=ev=>setRoute(ev.target.value);
 $('menu').addEventListener('click',ev=>{
  const a=ev.target.dataset.act;if(!a)return;
  $('menu').open=false;
@@ -845,6 +855,7 @@ addEventListener('beforeprint',()=>{const c=getCover();$('ptitle').textContent=c
 
 /* ---------- arranque ---------- */
 try{setTheme(localStorage.getItem('guion:theme')||'')}catch(_){}
+try{setRoute(localStorage.getItem('guion:enter')||'')}catch(_){}
 (function(){
  let d={t:'Sin título',m:'cine',l:DEMO};
  try{const s=JSON.parse(localStorage.getItem('guion:v1'));if(s&&Array.isArray(s.l))d=s}catch(_){}
