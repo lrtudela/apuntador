@@ -171,6 +171,24 @@ with sync_playwright() as pw:
     check("propone LUISA al escribir Luis", ghost() == "A", ghost())
     g.keyboard.press("Enter")
     check("Enter con propuesta deja lo escrito y crea la línea siguiente", texts(g)[-2] == "Luis" and types(g)[-1] == "dialogue", texts(g))
+    lu = "load('x','cine',[['character','LUISA'],['dialogue','a'],['character','']])"
+    g.evaluate(lu); g.click("#ed > div:last-child"); g.keyboard.type("Lu")
+    g.keyboard.press("Tab")
+    check("Tab con propuesta la acepta sin cambiar tipo ni crear línea", texts(g) == ["LUISA", "a", "LUISA"] and types(g)[-1] == "character" and ghost() == "", [texts(g), types(g)])
+    g.keyboard.press("Enter")
+    check("Enter tras aceptar con Tab crea la línea siguiente", texts(g)[-2] == "LUISA" and types(g)[-1] == "dialogue", [texts(g), types(g)])
+    g.evaluate(lu); g.click("#ed > div:last-child"); g.keyboard.type("Lu"); g.keyboard.press("Tab"); g.keyboard.press("Tab")
+    check("Tab tras aceptar rota el tipo", texts(g)[-1] == "LUISA" and types(g)[-1] != "character", types(g))
+    g.evaluate(lu); g.click("#ed > div:last-child"); g.keyboard.type("Lu"); g.keyboard.press("Shift+Tab")
+    check("Mayús+Tab con propuesta rota el tipo y no acepta", texts(g)[-1] == "Lu" and types(g)[-1] == "action", [texts(g), types(g)])
+    cyc = lambda: g.evaluate("document.getElementById('cyc').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}))")
+    g.evaluate(lu); g.click("#ed > div:last-child"); g.keyboard.type("Lu"); g.wait_for_timeout(50)  # selectionchange es asíncrono
+    g.evaluate("ED.blur();getSelection().removeAllRanges()"); cyc()
+    check("⇥ con propuesta la acepta, aunque el editor no tenga selección", texts(g)[-1] == "LUISA" and types(g)[-1] == "character", [texts(g), types(g)])
+    cyc()
+    check("⇥ sin propuesta rota el tipo", types(g)[-1] != "character", types(g))
+    ayu = g.evaluate("document.querySelector('[data-s=ayu]').textContent")
+    check("la ayuda dice que Tab acepta la propuesta y ⇥ en el móvil", "Tab (o la flecha derecha) lo acepta" in ayu and "Esc lo descarta" in ayu and "⇥ hace lo mismo que Tab" in ayu)
 
     # 7a. Esc y Tab sacan el foco del editor
     foc = lambda: g.evaluate("document.activeElement.id||document.activeElement.closest('#panel,#menu')?.id||document.activeElement.tagName")

@@ -211,7 +211,7 @@ footer{display:flex;gap:6px;align-items:center;padding:6px 8px;border-top:2px so
    <b>Esc</b> y luego <b>Tab</b> / <b>Mayús+Tab</b>: sale del editor hacia el pie, o hacia el panel y el menú Archivo.<br>
    <b>Mayús+Enter</b>: nueva línea del mismo tipo (versos).<br>
    <b>Ctrl+Espacio</b>: autocompleta personaje.<br>
-   Al escribir un personaje se propone en gris el más cercano: la <b>flecha derecha</b> lo acepta, <b>Enter</b> confirma lo escrito, <b>Esc</b> lo descarta.<br>
+   Al escribir un personaje se propone en gris el más cercano: <b>Tab</b> (o la <b>flecha derecha</b>) lo acepta, <b>Enter</b> confirma lo escrito, <b>Esc</b> lo descarta. En el móvil, <b>⇥</b> hace lo mismo que Tab.<br>
    <b>Ctrl+Z</b> / <b>Ctrl+Y</b>: deshacer / rehacer.<br>
    Pulsa ✎ junto a un personaje para renombrarlo en todo el guion. Si el nuevo nombre ya existe, ambos se fusionan. Si un personaje aparece nombrado en el texto (acciones, acotaciones o diálogos), eliges qué menciones cambiar.<br><br>
    <b>Presencias</b>: tabla con los personajes en filas y las escenas en columnas; ● marca las escenas en que habla cada uno (si solo se le nombra, no cuenta), y el número junto a cada nombre dice en cuántas escenas está. Pulsa un número o una celda para ir a esa escena. Sirve para planificar ensayos y repartir papeles. Para llevarla en papel, <b>Archivo › Tabla de presencias</b>: sale apaisada, en bloques de 25 escenas, con la lista de cabeceras debajo.<br><br>
@@ -549,7 +549,7 @@ function sugg(){
  if(!L.length||d===esc||d.textContent.toUpperCase()!==q)return;
  const s=getSelection(),r=document.createRange();r.selectNodeContents(d);r.setStart(s.anchorNode,s.anchorOffset);
  if(s.isCollapsed&&!r.toString())d.dataset.ghost=L[0].slice(q.length)}
-function applySug(v){const d=cur();if(!d)return;set(d,v);caret(d,9e9);changed();sugg()}
+function applySug(v){const d=cur()||last;if(!d||!d.isConnected)return;set(d,v);caret(d,9e9);changed();sugg()}
 SUG.addEventListener('pointerdown',ev=>{if(ev.target.dataset.v){ev.preventDefault();applySug(ev.target.dataset.v)}});
 
 /* ---------- historial y guardado ---------- */
@@ -674,7 +674,7 @@ ED.addEventListener('keydown',ev=>{
  if(mod&&ev.code==='Space'){ev.preventDefault();const b=SUG.firstChild;if(b)applySug(b.dataset.v);return}
  if(mod&&ev.altKey&&ev.code==='KeyM'){ev.preventDefault();noteHere(d);return}
  if(mod&&ev.altKey&&ev.code==='KeyN'){ev.preventDefault();nextNote();return}
- if(ev.key==='Tab'){ev.preventDefault();cycle(d,ev.shiftKey?-1:1);return}
+ if(ev.key==='Tab'){ev.preventDefault();if(d.dataset.ghost&&!ev.shiftKey)applySug(SUG.firstChild.dataset.v);else cycle(d,ev.shiftKey?-1:1);return}
  if(ev.key==='Escape'&&d.dataset.ghost){esc=d;delete d.dataset.ghost;return}
  if(ev.key==='Escape'){free=true;return}
  if(ev.key==='ArrowRight'&&d.dataset.ghost&&!ev.shiftKey&&!mod){ev.preventDefault();applySug(SUG.firstChild.dataset.v);return}
@@ -698,7 +698,7 @@ document.addEventListener('selectionchange',()=>{
  ED.querySelectorAll('.cur').forEach(x=>x!==d&&x.classList.remove('cur'));
  if(d){d.classList.add('cur');const ch=d!==last;last=d;if(ch){renderSel();if(NT.length)place()}if(CYC[M].includes(d.dataset.type))TIPO.value=d.dataset.type;sugg()}});
 TIPO.onchange=()=>{if(!last||!last.isConnected)return;ED.focus();caret(last,9e9);setType(last,TIPO.value);changed()};
-$('cyc').addEventListener('pointerdown',ev=>{ev.preventDefault();if(last&&last.isConnected)cycle(last,1)});
+$('cyc').addEventListener('pointerdown',ev=>{ev.preventDefault();if(!last||!last.isConnected)return;if(last.dataset.ghost)applySug(SUG.firstChild.dataset.v);else cycle(last,1)});
 TI.addEventListener('input',changed);
 MO.onchange=()=>{
  commit();M=MO.value;ED.dataset.mode=M;
